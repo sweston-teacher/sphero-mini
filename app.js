@@ -148,8 +148,16 @@
     try {
       robot = await SpheroMini.request();
     } catch (err) {
-      if (err.name === 'NotFoundError') return; // user closed the chooser
-      toast('Could not open the Bluetooth chooser: ' + err.message, 'bad');
+      console.error('requestDevice failed:', err.name, err.message);
+      const msg = String(err.message || '');
+      if (err.name === 'NotFoundError' && /cancel/i.test(msg)) return; // student closed the chooser
+      if (/adapter|not available|powered/i.test(msg)) {
+        showProblem('No Bluetooth found on this computer.', 'Check that Bluetooth is turned on in Windows Settings. Many desktop PCs have no Bluetooth at all and need a small USB Bluetooth adapter.');
+      } else if (/disabled|policy|permission|SecurityError/i.test(msg + err.name)) {
+        showProblem('Bluetooth is blocked on this computer.', 'A school Chrome policy is blocking Web Bluetooth. Ask IT to allow it for this site (Chrome policy DefaultWebBluetoothGuardSetting / WebBluetoothAskForUrls).');
+      } else {
+        showProblem('Could not open the Bluetooth chooser.', `${err.name}: ${msg || 'unknown error'}`);
+      }
       return;
     }
     let entry = robots.find((r) => r.id === robot.device.id);
@@ -439,10 +447,33 @@
   $('#connectBtn').addEventListener('click', connectNew);
   window.addEventListener('gamepadconnected', (e) => toast(`Game controller connected: ${e.gamepad.id.split('(')[0].trim()}`, 'ok'));
 
-  if (!SpheroMini.supported) {
-    $('#unsupported').style.display = 'block';
-    $('#connectBtn').disabled = true;
-    if (!window.isSecureContext) $('#unsupported').innerHTML = '<b>This page must be opened over <code>https://</code> (or from <code>localhost</code>) for Bluetooth to work.</b>';
+  function showProblem(title, detail) {
+    const box = $('#unsupported');
+    box.innerHTML = '';
+    const b = document.createElement('b'); b.textContent = title;
+    const d = document.createElement('div'); d.textContent = detail; d.style.marginTop = '6px';
+    box.append(b, d);
+    box.style.display = 'block';
+    toast(title, 'bad', 6000);
   }
+
+  async function checkBluetooth() {
+    if (!window.isSecureContext) {
+      showProblem('This page must be opened over https:// (or from localhost) for Bluetooth to work.', location.href);
+      $('#connectBtn').disabled = true;
+      return;
+    }
+    if (!SpheroMini.supported) {
+      $('#unsupported').style.display = 'block';
+      $('#connectBtn').disabled = true;
+      return;
+    }
+    try {
+      if (navigator.bluetooth.getAvailability && !(await navigator.bluetooth.getAvailability())) {
+        showProblem('No Bluetooth found on this computer.', 'Turn Bluetooth on in Windows Settings (Settings → Bluetooth & devices). If there is no Bluetooth switch there, this PC has no Bluetooth radio and needs a USB Bluetooth adapter.');
+      }
+    } catch (e) { console.warn('getAvailability failed', e); }
+  }
+  checkBluetooth();
   renderAll();
 })();
