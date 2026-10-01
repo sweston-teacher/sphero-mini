@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sphero Drive</title>
+<style>
+  :root {
+    --bg: #0f1218;
+    --panel: #181c25;
+    --panel-2: #20252f;
+    --line: #2c3340;
+    --text: #e9ecf1;
+    --muted: #9aa3b2;
+    --green: #2ecc71;
+    --red: #ff4d4f;
+    --yellow: #f5c542;
+    --accent: #4f8cff;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-user-select: none; user-select: none;
+    touch-action: manipulation;
+  }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; color: var(--text); background: var(--panel-2); padding: 10px 14px; }
+  button:hover { filter: brightness(1.15); }
+  button:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+  button.primary { background: var(--accent); color: #fff; font-weight: 600; }
+  button.danger { background: #3a2226; color: #ffb3b5; }
+  input[type=text] { font: inherit; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+
+  /* ---------- header / status banner ---------- */
+  header {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 14px 20px; border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 20px; margin: 0; letter-spacing: .3px; }
+  #banner {
+    flex: 1; min-width: 240px;
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: var(--radius);
+    font-weight: 700; font-size: 17px;
+    background: #3a1e21; color: #ffb3b5; border: 2px solid var(--red);
+  }
+  #banner.ok { background: #16311f; color: #b6f2c9; border-color: var(--green); }
+  #banner.warn { background: #3a3116; color: #ffe8a3; border-color: var(--yellow); }
+  #banner .dot { width: 16px; height: 16px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 0 rgba(255,77,79,.6); animation: pulse 1.6s infinite; flex: none; }
+  #banner.ok .dot { background: var(--green); box-shadow: 0 0 0 0 rgba(46,204,113,.6); }
+  #banner.warn .dot { background: var(--yellow); box-shadow: 0 0 0 0 rgba(245,197,66,.6); }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 currentColor; } 70% { box-shadow: 0 0 0 10px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
+  #unsupported { display: none; margin: 16px 20px; padding: 14px 16px; border-radius: var(--radius); background: #3a1e21; border: 2px solid var(--red); }
+
+  /* ---------- layout ---------- */
+  main { display: grid; grid-template-columns: 340px 1fr; gap: 20px; padding: 20px; max-width: 1200px; margin: 0 auto; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  section.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 12px; }
+
+  /* ---------- connect ritual ---------- */
+  #connectBtn { width: 100%; font-size: 18px; padding: 16px; margin-bottom: 14px; }
+  ol.steps { margin: 0 0 14px; padding-left: 0; list-style: none; counter-reset: s; display: grid; gap: 8px; }
+  ol.steps li { counter-increment: s; display: flex; gap: 10px; color: var(--muted); font-size: 14px; }
+  ol.steps li::before { content: counter(s); flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--panel-2); color: var(--text); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+  ol.steps b { color: var(--text); }
+
+  /* ---------- robot cards ---------- */
+  #robots { display: grid; gap: 10px; }
+  .robot {
+    position: relative; display: grid; gap: 8px;
+    padding: 12px 12px 12px 16px; border-radius: 12px;
+    background: var(--panel-2); border: 2px solid var(--line);
+    border-left: 8px solid var(--robot-color, #888);
+    cursor: pointer;
+  }
+  .robot.active { border-color: var(--robot-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--robot-color) 35%, transparent); }
+  .robot.dead { opacity: .75; border-color: var(--red); border-left-color: var(--robot-color); }
+  .robot .top { display: flex; align-items: center; gap: 10px; }
+  .robot .swatch { width: 28px; height: 28px; border-radius: 50%; background: var(--robot-color); box-shadow: 0 0 12px var(--robot-color); flex: none; }
+  .robot .name { font-weight: 700; font-size: 17px; flex: 1; min-width: 0; }
+  .robot .name input { width: 100%; font-weight: 700; font-size: 16px; }
+  .robot .id { color: var(--muted); font-size: 12px; font-family: ui-monospace, Menlo, monospace; }
+  .robot .status { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+  .robot .status .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); }
+  .robot .status.ok .dot { background: var(--green); }
+  .robot .status.busy .dot { background: var(--yellow); }
+  .robot .status.ok { color: #b6f2c9; } .robot .status.busy { color: #ffe8a3; } .robot .status.bad { color: #ffb3b5; }
+  .robot .meta { color: var(--muted); font-size: 13px; }
+  .robot .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .robot .actions button { padding: 7px 10px; font-size: 13px; }
+  .robot .drivetag { position: absolute; top: 10px; right: 10px; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #061; background: var(--green); padding: 3px 8px; border-radius: 99px; display: none; }
+  .robot.active .drivetag { display: block; }
+  #noRobots { color: var(--muted); font-size: 14px; text-align: center; padding: 20px 8px; border: 2px dashed var(--line); border-radius: 12px; }
+
+  /* ---------- controls ---------- */
+  #controls { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 560px) { #controls { grid-template-columns: 1fr; justify-items: center; } }
+  #stickWrap { position: relative; }
+  #stick {
+    width: 260px; height: 260px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #262c38 0, #1c212b 70%, #161a22 100%);
+    border: 3px solid var(--line); position: relative; touch-action: none;
+    box-shadow: inset 0 0 40px rgba(0,0,0,.5);
+  }
+  #stick::before { content: ""; position: absolute; inset: 50%; width: 2px; height: 100%; transform: translate(-50%, -50%); background: var(--line); }
+  #stick::after  { content: ""; position: absolute; inset: 50%; height: 2px; width: 100%; transform: translate(-50%, -50%); background: var(--line); }
+  #knob {
+    position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle at 35% 30%, #6d9bff, #2f63d6 70%);
+    box-shadow: 0 8px 20px rgba(0,0,0,.5); z-index: 2;
+    transition: background .2s;
+  }
+  #stick.dead #knob { background: radial-gradient(circle at 35% 30%, #555, #333 70%); }
+  #stickOverlay {
+    position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+    border-radius: 50%; background: rgba(15,18,24,.7); color: var(--muted); font-weight: 600;
+    padding: 30px; z-index: 3;
+  }
+  #stickOverlay[hidden] { display: none; }
+  .fwdLabel { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+
+  .row { display: grid; gap: 10px; margin-bottom: 18px; }
+  .row label { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .8px; }
+  .row label output { color: var(--text); font-weight: 700; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  #swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  #swatches button { width: 40px; height: 40px; border-radius: 50%; padding: 0; border: 3px solid transparent; }
+  #swatches button.sel { border-color: #fff; }
+  #colorPick { width: 40px; height: 40px; padding: 0; border: 0; background: none; cursor: pointer; }
+  #speedTag { color: var(--muted); font-size: 12px; }
+  #aimBox { display: none; padding: 12px; border-radius: 10px; background: #2b2a1a; border: 1px solid #5a5220; }
+  #aimBox.on { display: grid; gap: 10px; }
+  #aimBox p { margin: 0; font-size: 14px; }
+  #inputs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { padding: 5px 10px; border-radius: 99px; background: var(--panel-2); color: var(--muted); font-size: 12px; font-weight: 600; }
+  .chip.on { background: #16311f; color: #b6f2c9; }
+  kbd { display: inline-block; min-width: 22px; text-align: center; padding: 2px 6px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--line); border-bottom-width: 3px; font-family: inherit; font-size: 12px; }
+  .hint { color: var(--muted); font-size: 13px; line-height: 1.8; }
+
+  /* ---------- toasts ---------- */
+  #toasts { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 50; width: min(520px, calc(100% - 32px)); }
+  .toast { padding: 12px 16px; border-radius: 10px; background: #2a3040; border-left: 6px solid var(--accent); box-shadow: 0 8px 30px rgba(0,0,0,.5); font-weight: 600; animation: rise .2s ease-out; }
+  .toast.bad { border-left-color: var(--red); background: #3a1e21; }
+  .toast.ok  { border-left-color: var(--green); background: #16311f; }
+  @keyframes rise { from { transform: translateY(10px); opacity: 0; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎮 Sphero Drive</h1>
+  <div id="banner"><span class="dot"></span><span id="bannerText">No Sphero connected</span></div>
+</header>
+
+<div id="unsupported">
+  <b>This browser can't talk to Bluetooth devices.</b><br>
+  Open this page in <b>Google Chrome</b> or <b>Microsoft Edge</b> on a Chromebook, Mac, Windows PC, or Android device.
+  Safari, Firefox, iPhones and iPads don't support Web Bluetooth.
+</div>
+
+<main>
+  <!-- ===== left: connect + robots ===== -->
+  <section class="panel">
+    <h2>Robots</h2>
+    <button id="connectBtn" class="primary">＋ Connect a Sphero</button>
+    <ol class="steps">
+      <li><span>Take the Sphero <b>off its charger</b> and <b>shake it</b> until it lights up.</span></li>
+      <li><span>Click <b>Connect a Sphero</b>, pick the <b>SM‑xxxx</b> in the list, press <b>Pair</b>.</span></li>
+      <li><span>Your Sphero will <b>blink</b> and glow a color. That's you!</span></li>
+    </ol>
+    <div id="robots">
+      <div id="noRobots">Nothing connected yet</div>
+    </div>
+  </section>
+
+  <!-- ===== right: controls ===== -->
+  <section class="panel">
+    <h2>Drive <span id="driveWho" style="color:var(--text)"></span></h2>
+    <div id="controls">
+      <div id="stickWrap">
+        <div id="stick" class="dead">
+          <span class="fwdLabel">FORWARD</span>
+          <div id="knob"></div>
+          <div id="stickOverlay">Connect a Sphero to start driving</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="row">
+          <label>Top speed <output id="speedOut">120</output></label>
+          <input id="speed" type="range" min="20" max="255" value="120">
+          <span id="speedTag">Slow and steady for indoors. Crank it up for the gym.</span>
+        </div>
+
+        <div class="row">
+          <label>Color</label>
+          <div id="swatches"><input id="colorPick" type="color" value="#4f8cff" title="Custom color"></div>
+        </div>
+
+        <div class="row">
+          <label>Aim</label>
+          <button id="aimBtn">🎯 Set which way is forward</button>
+          <div id="aimBox">
+            <p>The little <b>blue light</b> on the back is on. Use <kbd>←</kbd> <kbd>→</kbd> or the joystick to spin the ball until the blue light points <b>toward you</b>, then click Done.</p>
+            <input id="aimSlider" type="range" min="0" max="359" value="0">
+            <button id="aimDone" class="primary">✅ Done, that's forward</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Inputs</label>
+          <div id="inputs">
+            <span class="chip on">Joystick</span>
+            <span class="chip on">Keyboard</span>
+            <span class="chip" id="padChip">Gamepad: none</span>
+          </div>
+          <div class="hint">
+            <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to drive · hold <kbd>Shift</kbd> for turbo · <kbd>Space</kbd> stops<br>
+            <kbd>1</kbd>–<kbd>9</kbd> pick which Sphero you're driving · <kbd>B</kbd> blinks it so you can find it<br>
+            Game controller: left stick or D‑pad drives, bumpers change color, <kbd>A</kbd> blinks
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toasts"></div>
+
+<script src="sphero.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
