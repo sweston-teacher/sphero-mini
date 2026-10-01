@@ -18,8 +18,16 @@
     { name: 'White',  hex: '#ffffff' },
   ];
 
-  const robots = [];        // { robot, id, nick, customNick, color, colorName, status, battery, el }
-  let active = null;
+  // Two key sets so two students can share one keyboard. Controller 1 follows WASD, controller 2 follows Arrows.
+  const KEYSETS = {
+    wasd:   { label: 'WASD',   badge: 'WASD keys',  up: 'KeyW',    down: 'KeyS',      left: 'KeyA',      right: 'KeyD',       turbo: 'ShiftLeft',  pad: 0 },
+    arrows: { label: 'Arrows', badge: 'Arrow keys', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', turbo: 'ShiftRight', pad: 1 },
+  };
+  const KEYSET_ORDER = ['wasd', 'arrows'];
+
+  // robots: { robot, id, nick, customNick, color, colorName, status, battery, keys, heading, moving, el }
+  const robots = [];
+  let active = null;        // the selected card: joystick, color, aim and the B key apply to it
   let maxSpeed = 120;
 
   // ---------------------------------------------------------------- helpers
@@ -45,21 +53,26 @@
   // ---------------------------------------------------------------- status banner
   function updateBanner() {
     const banner = $('#banner'), text = $('#bannerText');
-    const ok = robots.filter((r) => r.status === 'ok').length;
-    const lost = robots.filter((r) => r.status === 'bad').length;
+    const ok = robots.filter((r) => r.status === 'ok');
+    const lost = robots.filter((r) => r.status === 'bad');
+    const connecting = robots.filter((r) => r.status === 'connecting');
+    const keysFor = (r) => (r.keys ? KEYSETS[r.keys].label : 'joystick');
     banner.className = '';
     if (!robots.length) {
       text.textContent = 'No Sphero connected';
-    } else if (active && active.status === 'connecting') {
+    } else if (connecting.length) {
       banner.classList.add('warn');
-      text.textContent = `Connecting to ${active.nick}…`;
-    } else if (active && active.status === 'bad') {
-      text.textContent = `${active.nick} disconnected — shake it and press Reconnect`;
-    } else if (active) {
+      text.textContent = `Connecting to ${connecting.map((r) => r.nick).join(' and ')}…`;
+    } else if (lost.length) {
+      if (ok.length) banner.classList.add('warn');
+      text.textContent = `${lost.map((r) => r.nick).join(' and ')} disconnected — shake it and press Reconnect`
+        + (ok.length ? ` · ${ok.map((r) => r.nick).join(' and ')} still connected` : '');
+    } else if (ok.length === 1) {
       banner.classList.add('ok');
-      text.textContent = `Connected — driving ${active.nick}` + (ok > 1 ? ` (${ok} connected)` : '') + (lost ? ` · ${lost} lost` : '');
+      text.textContent = `Connected — driving ${ok[0].nick}`;
     } else {
-      text.textContent = 'No Sphero selected';
+      banner.classList.add('ok');
+      text.textContent = 'Connected — ' + ok.map((r) => `${r.nick} on ${keysFor(r)}`).join(' · ');
     }
     $('#driveWho').textContent = active ? `— ${active.nick}` : '';
     const canDrive = active && active.status === 'ok';
@@ -74,11 +87,12 @@
       const el = document.createElement('div');
       el.className = 'robot';
       el.innerHTML = `
-        <span class="drivetag">Driving</span>
+        <span class="drivetag">Selected</span>
         <div class="top">
           <span class="swatch"></span>
           <span class="name" title="Click to rename"></span>
         </div>
+        <button class="keys" data-act="keys" title="Click to change which keys drive this Sphero"></button>
         <div class="status"><span class="dot"></span><span class="statusText"></span></div>
         <div class="meta"><span class="id"></span> · <span class="batt">🔋 —</span></div>
         <div class="actions">
@@ -92,6 +106,7 @@
         setActive(entry);
       });
       el.querySelector('.name').addEventListener('click', () => editNick(entry));
+      el.querySelector('[data-act=keys]').addEventListener('click', () => cycleKeys(entry));
       el.querySelector('[data-act=blink]').addEventListener('click', () => blink(entry));
       el.querySelector('[data-act=reconnect]').addEventListener('click', () => reconnect(entry));
       el.querySelector('[data-act=sleep]').addEventListener('click', () => sleepRobot(entry));
@@ -105,6 +120,9 @@
     el.classList.toggle('dead', entry.status === 'bad');
     if (!el.querySelector('.name input')) el.querySelector('.name').textContent = `${robots.indexOf(entry) + 1}. ${entry.nick}`;
     el.querySelector('.id').textContent = entry.robot.name;
+    const kb = el.querySelector('.keys');
+    kb.textContent = entry.keys ? KEYSETS[entry.keys].badge : 'No keys (joystick only)';
+    kb.dataset.set = entry.keys || 'none';
     const st = el.querySelector('.status');
     st.className = 'status ' + ({ ok: 'ok', connecting: 'busy', bad: 'bad' }[entry.status]);
     el.querySelector('.statusText').textContent = { ok: 'Connected', connecting: 'Connecting…', bad: 'Disconnected' }[entry.status];
@@ -133,7 +151,23 @@
   }
 
   function setActive(entry) {
+    if (aimTarget && aimTarget !== entry) endAim(false);
     active = entry;
+    renderAll();
+  }
+
+  // ---------------------------------------------------------------- key sets
+  const keysOwner = (set) => robots.find((r) => r.keys === set);
+  const freeKeySet = () => KEYSET_ORDER.find((k) => !keysOwner(k)) || null;
+
+  // Click the badge to step WASD → Arrows → none. Taking a set another Sphero has swaps them.
+  function cycleKeys(entry) {
+    const order = [...KEYSET_ORDER, null];
+    const next = order[(order.indexOf(entry.keys) + 1) % order.length];
+    const other = next && keysOwner(next);
+    if (other && other !== entry) { stopRobot(other); other.keys = entry.keys; }
+    stopRobot(entry);
+    entry.keys = next;
     renderAll();
   }
 
@@ -167,7 +201,8 @@
     }
     const c = pickColor();
     const saved = loadNick(robot.device.id);
-    entry = { robot, id: robot.device.id, nick: saved || c.name, customNick: !!saved, color: c.hex, colorName: c.name, status: 'connecting', battery: null, el: null };
+    entry = { robot, id: robot.device.id, nick: saved || c.name, customNick: !!saved, color: c.hex, colorName: c.name,
+      status: 'connecting', battery: null, keys: freeKeySet(), heading: 0, moving: false, el: null };
     robots.push(entry);
     if (!active) active = entry;
     robot.addEventListener('disconnected', () => onDropped(entry));
@@ -184,7 +219,8 @@
       renderAll();
       const [r, g, b] = hexToRgb(entry.color);
       await entry.robot.setColor(r, g, b);
-      toast(`${entry.nick} is connected! Look for the ${entry.colorName.toLowerCase()} light.`, 'ok');
+      const how = entry.keys && robots.length > 1 ? ` Drive it with ${KEYSETS[entry.keys].label}.` : '';
+      toast(`${entry.nick} is connected! Look for the ${entry.colorName.toLowerCase()} light.${how}`, 'ok');
       blink(entry);
       refreshBattery(entry);
       if (!active || active.status !== 'ok') setActive(entry);
@@ -225,8 +261,10 @@
   async function removeRobot(entry) {
     entry.status = 'removed';
     try { await entry.robot.disconnect(); } catch {}
+    if (aimTarget === entry) endAim(false);
     robots.splice(robots.indexOf(entry), 1);
     entry.el.remove();
+    if (entry.keys) { const heir = robots.find((r) => !r.keys); if (heir) heir.keys = entry.keys; }
     if (active === entry) active = robots.find((r) => r.status === 'ok') || robots[0] || null;
     renderAll();
   }
@@ -276,50 +314,55 @@
     if (active) $('#colorPick').value = active.color;
   }
 
-  function applyColor(hex) {
-    if (!active || active.status !== 'ok') { toast('Connect a Sphero first.'); return; }
-    active.color = hex;
+  function applyColor(hex, target = active) {
+    if (!target || target.status !== 'ok') { toast('Connect a Sphero first.'); return; }
+    target.color = hex;
     const name = paletteName(hex);
-    active.colorName = name || 'Custom';
-    if (!active.customNick) active.nick = name || 'Custom';
+    target.colorName = name || 'Custom';
+    if (!target.customNick) target.nick = name || 'Custom';
     const [r, g, b] = hexToRgb(hex);
-    active.robot.setColor(r, g, b).catch(() => {});
+    target.robot.setColor(r, g, b).catch(() => {});
     renderAll();
   }
 
-  function cycleColor(dir) {
-    if (!active) return;
-    const i = PALETTE.findIndex((p) => p.hex.toLowerCase() === active.color.toLowerCase());
+  function cycleColor(dir, target = active) {
+    if (!target) return;
+    const i = PALETTE.findIndex((p) => p.hex.toLowerCase() === target.color.toLowerCase());
     const next = PALETTE[((i < 0 ? 0 : i + dir) + PALETTE.length) % PALETTE.length];
-    applyColor(next.hex);
+    applyColor(next.hex, target);
   }
 
   $('#colorPick').addEventListener('input', (e) => applyColor(e.target.value));
 
   // ---------------------------------------------------------------- inputs
+  // Keys are tracked by physical position (e.code) so Left and Right Shift can be told apart.
+  const DRIVE_CODES = new Set(Object.values(KEYSETS).flatMap((k) => [k.up, k.down, k.left, k.right, k.turbo]));
   const keys = new Set();
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.matches && e.target.matches('input, textarea')) return;
-    const k = e.key.toLowerCase();
-    if (/^[1-9]$/.test(k)) { const r = robots[+k - 1]; if (r) setActive(r); return; }
-    if (k === 'b') { if (active) blink(active); return; }
-    if (k === ' ') { e.preventDefault(); stopNow(); return; }
-    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', 'shift'].includes(k)) { e.preventDefault(); keys.add(k); }
+    const c = e.code;
+    const digit = /^(Digit|Numpad)([1-9])$/.exec(c);
+    if (digit) { const r = robots[+digit[2] - 1]; if (r) setActive(r); return; }
+    if (c === 'KeyB') { if (active) blink(active); return; }
+    // Space is the emergency stop: forget held keys so nobody starts again until they press a key fresh.
+    if (c === 'Space') { e.preventDefault(); keys.clear(); stopAll(); return; }
+    if (DRIVE_CODES.has(c)) { e.preventDefault(); if (!e.repeat || keys.has(c)) keys.add(c); }
   });
-  window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
-  window.addEventListener('blur', () => { keys.clear(); stopNow(); });
+  window.addEventListener('keyup', (e) => keys.delete(e.code));
+  window.addEventListener('blur', () => { keys.clear(); stopAll(); });
 
-  function keyboardVector() {
+  function keyboardVector(set) {
+    const k = KEYSETS[set];
     let x = 0, y = 0;
-    if (keys.has('arrowup') || keys.has('w')) y += 1;
-    if (keys.has('arrowdown') || keys.has('s')) y -= 1;
-    if (keys.has('arrowleft') || keys.has('a')) x -= 1;
-    if (keys.has('arrowright') || keys.has('d')) x += 1;
+    if (keys.has(k.up)) y += 1;
+    if (keys.has(k.down)) y -= 1;
+    if (keys.has(k.left)) x -= 1;
+    if (keys.has(k.right)) x += 1;
     const m = Math.hypot(x, y);
-    return m ? { x: x / m, y: y / m, turbo: keys.has('shift') } : null;
+    return m ? { x: x / m, y: y / m, turbo: keys.has(k.turbo) } : null;
   }
 
-  // On-screen joystick
+  // On-screen joystick (drives the selected Sphero)
   const stick = $('#stick'), knob = $('#knob');
   let joy = null; // {x, y} with y up = forward
   stick.addEventListener('pointerdown', (e) => {
@@ -354,93 +397,118 @@
     knob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
   }
 
-  // Real gamepads
+  // Real gamepads: the first one plugged in follows WASD's Sphero, the second follows Arrows'.
   const padPrev = {};
-  function gamepadVector() {
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-    let pad = null;
-    for (const p of pads) if (p && p.connected) { pad = p; break; }
+  let padVectors = [null, null];
+  function readGamepads() {
+    const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter((p) => p && p.connected) : [];
     const chip = $('#padChip');
-    chip.classList.toggle('on', !!pad);
-    chip.textContent = pad ? 'Gamepad: ' + (pad.id.split('(')[0].trim().slice(0, 24) || 'connected') : 'Gamepad: none';
-    if (!pad) return null;
+    chip.classList.toggle('on', pads.length > 0);
+    chip.textContent = pads.length === 0 ? 'Gamepad: none'
+      : pads.length === 1 ? 'Gamepad: ' + (pads[0].id.split('(')[0].trim().slice(0, 24) || 'connected')
+      : `Gamepads: ${pads.length}`;
+    padVectors = [null, null];
+    pads.slice(0, 2).forEach((pad, slot) => {
+      const target = driverFor(KEYSET_ORDER[slot]);
+      const prev = padPrev[pad.index] || (padPrev[pad.index] = {});
+      const pressed = (i) => !!(pad.buttons[i] && pad.buttons[i].pressed);
+      const edge = (i) => { const now = pressed(i), was = !!prev[i]; prev[i] = now; return now && !was; };
+      if (edge(4)) cycleColor(-1, target);
+      if (edge(5)) cycleColor(1, target);
+      if (edge(0) && target) blink(target);
 
-    // edge-triggered buttons
-    const pressed = (i) => !!(pad.buttons[i] && pad.buttons[i].pressed);
-    const edge = (i) => { const now = pressed(i), was = !!padPrev[i]; padPrev[i] = now; return now && !was; };
-    if (edge(4)) cycleColor(-1);
-    if (edge(5)) cycleColor(1);
-    if (edge(0) && active) blink(active);
+      let x = pad.axes[0] || 0, y = -(pad.axes[1] || 0);
+      if (pressed(12)) y = 1; if (pressed(13)) y = -1; if (pressed(14)) x = -1; if (pressed(15)) x = 1;
+      const m = Math.hypot(x, y);
+      if (m < 0.15) return;
+      const scale = Math.min(1, (m - 0.15) / 0.85) / m; // dead zone, then ramp to full
+      padVectors[slot] = { x: x * scale, y: y * scale, turbo: pressed(7) };
+    });
+  }
 
-    let x = pad.axes[0] || 0, y = -(pad.axes[1] || 0);
-    if (pressed(12)) y = 1; if (pressed(13)) y = -1; if (pressed(14)) x = -1; if (pressed(15)) x = 1;
-    const m = Math.hypot(x, y);
-    if (m < 0.15) return null;
-    const scale = Math.min(1, (m - 0.15) / 0.85) / m; // dead zone, then ramp to full
-    return { x: x * scale, y: y * scale, turbo: pressed(7) };
+  // Who a key set / controller drives: the Sphero that owns it, or the selected one if nobody does.
+  function driverFor(set) {
+    const owner = keysOwner(set);
+    return owner || active || null;
   }
 
   // ---------------------------------------------------------------- drive loop
-  let lastHeading = 0, moving = false;
-  let aimMode = false, aimHeading = 0, aimSent = null;
+  let aimTarget = null, aimHeading = 0, aimSent = null;
 
-  function stopNow() {
-    moving = false;
-    if (active && active.status === 'ok') active.robot.drive(0, lastHeading).catch(() => {});
+  function stopRobot(entry) {
+    entry.moving = false;
+    if (entry.status === 'ok') entry.robot.drive(0, entry.heading).catch(() => {});
+  }
+  function stopAll() { robots.forEach(stopRobot); }
+
+  function inputFor(entry) {
+    if (entry === active && joy) return joy;
+    for (const set of KEYSET_ORDER) {
+      if (driverFor(set) !== entry) continue;
+      const v = padVectors[KEYSETS[set].pad] || keyboardVector(set);
+      if (v) return v;
+    }
+    return null;
   }
 
   function tick() {
-    const v = joy || gamepadVector() || keyboardVector();
-    showKnob(v);
-    if (!active || active.status !== 'ok') return;
+    readGamepads();
+    showKnob(active ? inputFor(active) : null);
+    for (const entry of robots) {
+      if (entry.status !== 'ok') continue;
+      const v = inputFor(entry);
 
-    if (aimMode) {
-      if (v) aimHeading = (aimHeading + v.x * 5 + 360) % 360;
-      $('#aimSlider').value = Math.round(aimHeading);
-      const h = Math.round(aimHeading);
-      if (h !== aimSent) { aimSent = h; active.robot.drive(0, h).catch(() => {}); }
-      return;
-    }
+      if (entry === aimTarget) {
+        if (v) aimHeading = (aimHeading + v.x * 5 + 360) % 360;
+        $('#aimSlider').value = Math.round(aimHeading);
+        const h = Math.round(aimHeading);
+        if (h !== aimSent) { aimSent = h; entry.robot.drive(0, h).catch(() => {}); }
+        continue;
+      }
 
-    if (v) {
-      const mag = Math.min(1, Math.hypot(v.x, v.y));
-      lastHeading = (Math.round(Math.atan2(v.x, v.y) * 180 / Math.PI) + 360) % 360;
-      const speed = v.turbo ? 255 : Math.round(mag * maxSpeed);
-      active.robot.drive(speed, lastHeading).catch(() => {});
-      moving = true;
-    } else if (moving) {
-      moving = false;
-      active.robot.drive(0, lastHeading).catch(() => {});
+      if (v) {
+        const mag = Math.min(1, Math.hypot(v.x, v.y));
+        entry.heading = (Math.round(Math.atan2(v.x, v.y) * 180 / Math.PI) + 360) % 360;
+        const speed = v.turbo ? 255 : Math.round(mag * maxSpeed);
+        entry.robot.drive(speed, entry.heading).catch(() => {});
+        entry.moving = true;
+      } else if (entry.moving) {
+        stopRobot(entry);
+      }
     }
   }
   setInterval(tick, 50);
 
   // ---------------------------------------------------------------- aim mode
-  $('#aimBtn').addEventListener('click', () => {
-    if (!active || active.status !== 'ok') { toast('Connect a Sphero first.'); return; }
-    aimMode = !aimMode;
-    $('#aimBox').classList.toggle('on', aimMode);
-    $('#aimBtn').textContent = aimMode ? '✖ Cancel aiming' : '🎯 Set which way is forward';
-    if (aimMode) {
-      aimHeading = lastHeading; aimSent = null;
-      active.robot.setBackLed(255).catch(() => {});
-    } else {
-      active.robot.setBackLed(0).catch(() => {});
-    }
-  });
-  $('#aimSlider').addEventListener('input', (e) => { aimHeading = +e.target.value; });
-  $('#aimDone').addEventListener('click', async () => {
-    if (!active) return;
-    aimMode = false;
+  function endAim(save) {
+    const target = aimTarget;
+    aimTarget = null;
     $('#aimBox').classList.remove('on');
     $('#aimBtn').textContent = '🎯 Set which way is forward';
-    try {
-      await active.robot.resetYaw();
-      await active.robot.setBackLed(0);
-      lastHeading = 0;
-      toast('Forward is set!', 'ok');
-    } catch (e) { toast('Could not set aim: ' + e.message, 'bad'); }
+    if (!target || target.status !== 'ok') return Promise.resolve();
+    if (!save) return target.robot.setBackLed(0).catch(() => {});
+    return (async () => {
+      try {
+        await target.robot.resetYaw();
+        await target.robot.setBackLed(0);
+        target.heading = 0;
+        toast(`Forward is set for ${target.nick}!`, 'ok');
+      } catch (e) { toast('Could not set aim: ' + e.message, 'bad'); }
+    })();
+  }
+
+  $('#aimBtn').addEventListener('click', () => {
+    if (aimTarget) { endAim(false); return; }
+    if (!active || active.status !== 'ok') { toast('Connect a Sphero first.'); return; }
+    stopRobot(active);
+    aimTarget = active;
+    aimHeading = active.heading; aimSent = null;
+    $('#aimBox').classList.add('on');
+    $('#aimBtn').textContent = '✖ Cancel aiming';
+    active.robot.setBackLed(255).catch(() => {});
   });
+  $('#aimSlider').addEventListener('input', (e) => { aimHeading = +e.target.value; });
+  $('#aimDone').addEventListener('click', () => endAim(true));
 
   // ---------------------------------------------------------------- misc wiring
   $('#speed').addEventListener('input', (e) => { maxSpeed = +e.target.value; $('#speedOut').textContent = maxSpeed; });

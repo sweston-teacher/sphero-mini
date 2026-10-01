@@ -34,13 +34,20 @@ then **Remove** it and try again.
 
 ## Controls
 
-| Input | Drive | Other |
-| --- | --- | --- |
-| On-screen joystick | drag | |
-| Keyboard | WASD / arrows, Shift = turbo | Space = stop, 1-9 = pick robot, B = blink |
-| Game controller | left stick or D-pad, right trigger = turbo | bumpers change color, A = blink |
+Two students can drive two Spheros from one keyboard.
 
-Each computer can connect several Spheros. Keys 1-9 or clicking a card picks which one the controls drive.
+| Input | Drives | Turbo | Other |
+| --- | --- | --- | --- |
+| W A S D | the Sphero with the **WASD** badge | Left Shift | |
+| Arrow keys | the Sphero with the **Arrows** badge | Right Shift | |
+| On-screen joystick | the selected card | | |
+| Game controller 1 | the WASD Sphero | right trigger | bumpers change color, A blinks |
+| Game controller 2 | the Arrows Sphero | right trigger | bumpers change color, A blinks |
+
+- The first Sphero connected gets WASD, the second gets Arrows. Click the badge on a card to swap or change it.
+- With only one Sphero connected, both key sets and any controller drive it.
+- Space stops every Sphero. Keys 1-9 select a card, and the color buttons, Aim, and B (blink) apply to the selected card.
+- A third Sphero on the same computer gets no keys and drives with the joystick when selected. If one of the first two is removed, it inherits the free key set.
 
 ## Files
 

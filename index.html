@@ -94,6 +94,12 @@
   .robot .actions button { padding: 7px 10px; font-size: 13px; }
   .robot .drivetag { position: absolute; top: 10px; right: 10px; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #061; background: var(--green); padding: 3px 8px; border-radius: 99px; display: none; }
   .robot.active .drivetag { display: block; }
+  .robot .keys {
+    justify-self: start; padding: 6px 12px; border-radius: 99px; font-weight: 800; font-size: 15px; letter-spacing: .3px;
+    background: #2a3550; color: #cfe0ff; border: 2px solid #4f6fb0;
+  }
+  .robot .keys[data-set=arrows] { background: #3b2a50; color: #ead6ff; border-color: #8a5fc7; }
+  .robot .keys[data-set=none] { background: var(--panel); color: var(--muted); border-color: var(--line); font-weight: 600; font-size: 13px; }
   #noRobots { color: var(--muted); font-size: 14px; text-align: center; padding: 20px 8px; border: 2px dashed var(--line); border-radius: 12px; }
 
   /* ---------- controls ---------- */
@@ -180,7 +186,7 @@
 
   <!-- ===== right: controls ===== -->
   <section class="panel">
-    <h2>Drive <span id="driveWho" style="color:var(--text)"></span></h2>
+    <h2>Joystick, color &amp; aim <span id="driveWho" style="color:var(--text)"></span></h2>
     <div id="controls">
       <div id="stickWrap">
         <div id="stick" class="dead">
@@ -206,7 +212,7 @@
           <label>Aim</label>
           <button id="aimBtn">🎯 Set which way is forward</button>
           <div id="aimBox">
-            <p>The little <b>blue light</b> on the back is on. Use <kbd>←</kbd> <kbd>→</kbd> or the joystick to spin the ball until the blue light points <b>toward you</b>, then click Done.</p>
+            <p>The little <b>blue light</b> on the back is on. Use that Sphero's left/right keys, the joystick, or the slider to spin the ball until the blue light points <b>toward you</b>, then click Done.</p>
             <input id="aimSlider" type="range" min="0" max="359" value="0">
             <button id="aimDone" class="primary">✅ Done, that's forward</button>
           </div>
@@ -220,9 +226,11 @@
             <span class="chip" id="padChip">Gamepad: none</span>
           </div>
           <div class="hint">
-            <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to drive · hold <kbd>Shift</kbd> for turbo · <kbd>Space</kbd> stops<br>
-            <kbd>1</kbd>–<kbd>9</kbd> pick which Sphero you're driving · <kbd>B</kbd> blinks it so you can find it<br>
-            Game controller: left stick or D‑pad drives, bumpers change color, <kbd>A</kbd> blinks
+            <b>Two drivers, one keyboard:</b> the first Sphero drives with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> (turbo: left <kbd>Shift</kbd>),
+            the second with the arrow keys <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> (turbo: right <kbd>Shift</kbd>).
+            Click the keys badge on a card to swap. With only one Sphero, both sets drive it.<br>
+            <kbd>Space</kbd> stops everything · <kbd>1</kbd>–<kbd>9</kbd> select a card for the joystick, color and aim · <kbd>B</kbd> blinks it<br>
+            Game controllers: the first follows the WASD Sphero, the second follows the Arrows Sphero. Stick or D‑pad drives, bumpers change color, <kbd>A</kbd> blinks
           </div>
         </div>
       </div>
