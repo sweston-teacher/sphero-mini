@@ -338,8 +338,18 @@
   // Keys are tracked by physical position (e.code) so Left and Right Shift can be told apart.
   const DRIVE_CODES = new Set(Object.values(KEYSETS).flatMap((k) => [k.up, k.down, k.left, k.right, k.turbo]));
   const keys = new Set();
+
+  // Only a box you can type into (renaming a Sphero) should swallow the driving keys. Sliders, the color
+  // picker and buttons keep focus after a click, and they must not stop the keyboard from driving.
+  const NON_TEXT_INPUTS = new Set(['range', 'color', 'checkbox', 'radio', 'button', 'submit', 'reset']);
+  function isTypingIn(t) {
+    if (!t || !t.matches) return false;
+    if (t.isContentEditable || t.matches('textarea, select')) return true;
+    return t.matches('input') && !NON_TEXT_INPUTS.has(t.type);
+  }
+
   window.addEventListener('keydown', (e) => {
-    if (e.target && e.target.matches && e.target.matches('input, textarea')) return;
+    if (isTypingIn(e.target)) return;
     const c = e.code;
     const digit = /^(Digit|Numpad)([1-9])$/.exec(c);
     if (digit) { const r = robots[+digit[2] - 1]; if (r) setActive(r); return; }
@@ -348,7 +358,11 @@
     if (c === 'Space') { e.preventDefault(); keys.clear(); stopAll(); return; }
     if (DRIVE_CODES.has(c)) { e.preventDefault(); if (!e.repeat || keys.has(c)) keys.add(c); }
   });
-  window.addEventListener('keyup', (e) => keys.delete(e.code));
+  window.addEventListener('keyup', (e) => {
+    keys.delete(e.code);
+    // A focused button "clicks" when Space is released; Space is the stop key, so cancel that.
+    if (e.code === 'Space' && !isTypingIn(e.target)) e.preventDefault();
+  });
   window.addEventListener('blur', () => { keys.clear(); stopAll(); });
 
   function keyboardVector(set) {
