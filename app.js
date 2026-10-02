@@ -4,6 +4,12 @@
 
   const $ = (sel) => document.querySelector(sel);
 
+  // Shown next to the title so the teacher can tell at a glance whether a student has reloaded.
+  // Bump on every deploy: +0.01 for small fixes, a bigger step for new features.
+  const VERSION = '1.05';
+  if ($('#version')) $('#version').textContent = 'v' + VERSION;
+  console.info('Sphero Drive v' + VERSION);
+
   // Each connected Sphero gets the first unused color here, so students can tell them apart
   // by simply looking at the ball. The card in the list glows the same color.
   const PALETTE = [

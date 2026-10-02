@@ -39,7 +39,8 @@
     display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
     padding: 14px 20px; border-bottom: 1px solid var(--line);
   }
-  header h1 { font-size: 20px; margin: 0; letter-spacing: .3px; }
+  header h1 { font-size: 20px; margin: 0; letter-spacing: .3px; display: flex; align-items: baseline; gap: 8px; }
+  #version { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .5px; }
   #banner {
     flex: 1; min-width: 240px;
     display: flex; align-items: center; gap: 12px;
@@ -159,7 +160,7 @@
 <body>
 
 <header>
-  <h1>🎮 Sphero Drive</h1>
+  <h1>🎮 Sphero Drive <span id="version" title="Site version. Reload the page if this is lower than expected."></span></h1>
   <div id="banner"><span class="dot"></span><span id="bannerText">No Sphero connected</span></div>
 </header>
 
