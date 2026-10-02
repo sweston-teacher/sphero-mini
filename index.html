@@ -23,11 +23,12 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 18px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     -webkit-user-select: none; user-select: none;
     touch-action: manipulation;
   }
-  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; color: var(--text); background: var(--panel-2); padding: 10px 14px; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; color: var(--text); background: var(--panel-2); padding: 12px 16px; }
+  [hidden] { display: none !important; }
   button:hover { filter: brightness(1.15); }
   button:disabled { opacity: .45; cursor: not-allowed; filter: none; }
   button.primary { background: var(--accent); color: #fff; font-weight: 600; }
@@ -39,13 +40,13 @@
     display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
     padding: 14px 20px; border-bottom: 1px solid var(--line);
   }
-  header h1 { font-size: 20px; margin: 0; letter-spacing: .3px; display: flex; align-items: baseline; gap: 8px; }
-  #version { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .5px; }
+  header h1 { font-size: 26px; margin: 0; letter-spacing: .3px; display: flex; align-items: baseline; gap: 8px; }
+  #version { font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: .5px; }
   #banner {
     flex: 1; min-width: 240px;
     display: flex; align-items: center; gap: 12px;
     padding: 12px 16px; border-radius: var(--radius);
-    font-weight: 700; font-size: 17px;
+    font-weight: 700; font-size: 21px;
     background: #3a1e21; color: #ffb3b5; border: 2px solid var(--red);
   }
   #banner.ok { background: #16311f; color: #b6f2c9; border-color: var(--green); }
@@ -54,19 +55,27 @@
   #banner.ok .dot { background: var(--green); box-shadow: 0 0 0 0 rgba(46,204,113,.6); }
   #banner.warn .dot { background: var(--yellow); box-shadow: 0 0 0 0 rgba(245,197,66,.6); }
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 currentColor; } 70% { box-shadow: 0 0 0 10px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
-  #unsupported { display: none; margin: 16px 20px; padding: 14px 16px; border-radius: var(--radius); background: #3a1e21; border: 2px solid var(--red); }
+  .alert { max-width: 1200px; margin: 20px auto 0; padding: 18px 22px; border-radius: var(--radius); background: #3a1e21; border: 3px solid var(--red); }
+  #problemBox { width: calc(100% - 40px); }
+  #problemBox .detail { margin-top: 6px; font-size: 15px; color: #ffb3b5; }
+  #btHelp { width: calc(100% - 40px); font-size: 22px; }
+  #btHelp h3 { margin: 0 0 12px; font-size: 28px; }
+  #btHelp ol { margin: 0; padding-left: 32px; display: grid; gap: 12px; }
+  #btHelp code { font-family: ui-monospace, Consolas, monospace; background: #000; color: #fff; padding: 4px 10px; border-radius: 8px; user-select: all; -webkit-user-select: all; }
+  #btHelp button { font-size: 18px; padding: 8px 14px; margin-left: 6px; vertical-align: middle; }
+  #btHelp .small { margin: 12px 0 0; font-size: 16px; color: #ffb3b5; }
 
   /* ---------- layout ---------- */
-  main { display: grid; grid-template-columns: 340px 1fr; gap: 20px; padding: 20px; max-width: 1200px; margin: 0 auto; }
+  main { display: grid; grid-template-columns: 380px 1fr; gap: 20px; padding: 20px; max-width: 1200px; margin: 0 auto; }
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
   section.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 12px; }
+  h2 { font-size: 16px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 12px; }
 
   /* ---------- connect ritual ---------- */
-  #connectBtn { width: 100%; font-size: 18px; padding: 16px; margin-bottom: 14px; }
-  ol.steps { margin: 0 0 14px; padding-left: 0; list-style: none; counter-reset: s; display: grid; gap: 8px; }
-  ol.steps li { counter-increment: s; display: flex; gap: 10px; color: var(--muted); font-size: 14px; }
-  ol.steps li::before { content: counter(s); flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--panel-2); color: var(--text); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+  #connectBtn { width: 100%; font-size: 24px; padding: 18px; margin-bottom: 14px; }
+  ol.steps { margin: 0 0 16px; padding-left: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
+  ol.steps li { counter-increment: s; display: flex; align-items: center; gap: 12px; font-size: 20px; }
+  ol.steps li::before { content: counter(s); flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--panel-2); color: var(--text); display: grid; place-items: center; font-weight: 700; font-size: 17px; }
   ol.steps b { color: var(--text); }
 
   /* ---------- robot cards ---------- */
@@ -81,27 +90,27 @@
   .robot.active { border-color: var(--robot-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--robot-color) 35%, transparent); }
   .robot.dead { opacity: .75; border-color: var(--red); border-left-color: var(--robot-color); }
   .robot .top { display: flex; align-items: center; gap: 10px; }
-  .robot .swatch { width: 28px; height: 28px; border-radius: 50%; background: var(--robot-color); box-shadow: 0 0 12px var(--robot-color); flex: none; }
-  .robot .name { font-weight: 700; font-size: 17px; flex: 1; min-width: 0; }
-  .robot .name input { width: 100%; font-weight: 700; font-size: 16px; }
-  .robot .id { color: var(--muted); font-size: 12px; font-family: ui-monospace, Menlo, monospace; }
-  .robot .status { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
-  .robot .status .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); }
+  .robot .swatch { width: 34px; height: 34px; border-radius: 50%; background: var(--robot-color); box-shadow: 0 0 12px var(--robot-color); flex: none; }
+  .robot .name { font-weight: 700; font-size: 22px; flex: 1; min-width: 0; }
+  .robot .name input { width: 100%; font-weight: 700; font-size: 20px; }
+  .robot .id { color: var(--muted); font-size: 14px; font-family: ui-monospace, Menlo, monospace; }
+  .robot .status { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 19px; }
+  .robot .status .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--red); }
   .robot .status.ok .dot { background: var(--green); }
   .robot .status.busy .dot { background: var(--yellow); }
   .robot .status.ok { color: #b6f2c9; } .robot .status.busy { color: #ffe8a3; } .robot .status.bad { color: #ffb3b5; }
-  .robot .meta { color: var(--muted); font-size: 13px; }
+  .robot .meta { color: var(--muted); font-size: 16px; }
   .robot .actions { display: flex; flex-wrap: wrap; gap: 6px; }
-  .robot .actions button { padding: 7px 10px; font-size: 13px; }
-  .robot .drivetag { position: absolute; top: 10px; right: 10px; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #061; background: var(--green); padding: 3px 8px; border-radius: 99px; display: none; }
+  .robot .actions button { padding: 9px 13px; font-size: 17px; }
+  .robot .drivetag { position: absolute; top: 10px; right: 10px; font-size: 13px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: #061; background: var(--green); padding: 3px 8px; border-radius: 99px; display: none; }
   .robot.active .drivetag { display: block; }
   .robot .keys {
-    justify-self: start; padding: 6px 12px; border-radius: 99px; font-weight: 800; font-size: 15px; letter-spacing: .3px;
+    justify-self: start; padding: 6px 12px; border-radius: 99px; font-weight: 800; font-size: 19px; letter-spacing: .3px;
     background: #2a3550; color: #cfe0ff; border: 2px solid #4f6fb0;
   }
   .robot .keys[data-set=arrows] { background: #3b2a50; color: #ead6ff; border-color: #8a5fc7; }
-  .robot .keys[data-set=none] { background: var(--panel); color: var(--muted); border-color: var(--line); font-weight: 600; font-size: 13px; }
-  #noRobots { color: var(--muted); font-size: 14px; text-align: center; padding: 20px 8px; border: 2px dashed var(--line); border-radius: 12px; }
+  .robot .keys[data-set=none] { background: var(--panel); color: var(--muted); border-color: var(--line); font-weight: 600; font-size: 16px; }
+  #noRobots { color: var(--muted); font-size: 19px; text-align: center; padding: 20px 8px; border: 2px dashed var(--line); border-radius: 12px; }
 
   /* ---------- controls ---------- */
   #controls { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: start; }
@@ -125,33 +134,36 @@
   #stick.dead #knob { background: radial-gradient(circle at 35% 30%, #555, #333 70%); }
   #stickOverlay {
     position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
-    border-radius: 50%; background: rgba(15,18,24,.7); color: var(--muted); font-weight: 600;
+    border-radius: 50%; background: rgba(15,18,24,.7); color: var(--text); font-weight: 700; font-size: 20px;
     padding: 30px; z-index: 3;
   }
   #stickOverlay[hidden] { display: none; }
-  .fwdLabel { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+  .fwdLabel { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); font-size: 13px; color: var(--muted); letter-spacing: 1px; }
 
   .row { display: grid; gap: 10px; margin-bottom: 18px; }
-  .row label { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .8px; }
+  .row label { display: flex; justify-content: space-between; color: var(--muted); font-size: 16px; text-transform: uppercase; letter-spacing: .8px; }
   .row label output { color: var(--text); font-weight: 700; }
   input[type=range] { width: 100%; accent-color: var(--accent); }
   #swatches { display: flex; flex-wrap: wrap; gap: 8px; }
-  #swatches button { width: 40px; height: 40px; border-radius: 50%; padding: 0; border: 3px solid transparent; }
+  #swatches button { width: 46px; height: 46px; border-radius: 50%; padding: 0; border: 3px solid transparent; }
   #swatches button.sel { border-color: #fff; }
-  #colorPick { width: 40px; height: 40px; padding: 0; border: 0; background: none; cursor: pointer; }
-  #speedTag { color: var(--muted); font-size: 12px; }
+  #colorPick { width: 46px; height: 46px; padding: 0; border: 0; background: none; cursor: pointer; }
   #aimBox { display: none; padding: 12px; border-radius: 10px; background: #2b2a1a; border: 1px solid #5a5220; }
   #aimBox.on { display: grid; gap: 10px; }
-  #aimBox p { margin: 0; font-size: 14px; }
-  #inputs { display: flex; gap: 8px; flex-wrap: wrap; }
-  .chip { padding: 5px 10px; border-radius: 99px; background: var(--panel-2); color: var(--muted); font-size: 12px; font-weight: 600; }
+  #aimBox p { margin: 0; font-size: 19px; }
+  .keymap { display: grid; grid-template-columns: auto 1fr; gap: 12px 16px; align-items: center; font-size: 20px; }
+  .keymap .what { font-weight: 800; }
+  .keymap .or { color: var(--muted); margin: 0 6px; font-size: 17px; }
+  details.more { margin-top: 4px; color: var(--muted); font-size: 16px; }
+  details.more summary { cursor: pointer; font-weight: 700; color: var(--text); padding: 6px 0; }
+  details.more ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+  .chip { display: inline-block; padding: 5px 10px; border-radius: 99px; background: var(--panel-2); color: var(--muted); font-size: 14px; font-weight: 600; }
   .chip.on { background: #16311f; color: #b6f2c9; }
-  kbd { display: inline-block; min-width: 22px; text-align: center; padding: 2px 6px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--line); border-bottom-width: 3px; font-family: inherit; font-size: 12px; }
-  .hint { color: var(--muted); font-size: 13px; line-height: 1.8; }
+  kbd { display: inline-block; min-width: 34px; text-align: center; padding: 3px 9px; margin: 2px 1px; border-radius: 7px; background: var(--panel-2); border: 1px solid #4a5366; border-bottom-width: 4px; font-family: inherit; font-weight: 700; font-size: 18px; color: var(--text); }
 
   /* ---------- toasts ---------- */
   #toasts { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 50; width: min(520px, calc(100% - 32px)); }
-  .toast { padding: 12px 16px; border-radius: 10px; background: #2a3040; border-left: 6px solid var(--accent); box-shadow: 0 8px 30px rgba(0,0,0,.5); font-weight: 600; animation: rise .2s ease-out; }
+  .toast { padding: 12px 16px; border-radius: 10px; background: #2a3040; border-left: 6px solid var(--accent); box-shadow: 0 8px 30px rgba(0,0,0,.5); font-weight: 700; font-size: 19px; animation: rise .2s ease-out; }
   .toast.bad { border-left-color: var(--red); background: #3a1e21; }
   .toast.ok  { border-left-color: var(--green); background: #16311f; }
   @keyframes rise { from { transform: translateY(10px); opacity: 0; } }
@@ -164,11 +176,19 @@
   <div id="banner"><span class="dot"></span><span id="bannerText">No Sphero connected</span></div>
 </header>
 
-<div id="unsupported">
-  <b>This browser can't talk to Bluetooth devices.</b><br>
-  Open this page in <b>Google Chrome</b> or <b>Microsoft Edge</b> on a Chromebook, Mac, Windows PC, or Android device.
-  Safari, Firefox, iPhones and iPads don't support Web Bluetooth.
-</div>
+<section id="btHelp" class="alert" hidden>
+  <h3>🔌 Bluetooth stick not found</h3>
+  <ol>
+    <li>Plug in the Bluetooth stick.</li>
+    <li>Click the address bar at the top, type <code id="restartCmd">chrome://restart</code><button id="copyRestart" type="button">📋 Copy</button> and press <kbd>Enter</kbd>.</li>
+  </ol>
+  <p class="small">Chrome closes and opens again with this page. This box goes away by itself when Bluetooth works.</p>
+</section>
+
+<section id="problemBox" class="alert" hidden>
+  <b id="problemTitle">Open this page in Google Chrome.</b>
+  <div class="detail" id="problemDetail">This browser can't use Bluetooth.</div>
+</section>
 
 <main>
   <!-- ===== left: connect + robots ===== -->
@@ -176,32 +196,31 @@
     <h2>Robots</h2>
     <button id="connectBtn" class="primary">＋ Connect a Sphero</button>
     <ol class="steps">
-      <li><span>Take the Sphero <b>off its charger</b> and <b>shake it</b> until it lights up.</span></li>
-      <li><span>Click <b>Connect a Sphero</b>, pick the <b>SM‑xxxx</b> in the list, press <b>Pair</b>.</span></li>
-      <li><span>Your Sphero will <b>blink</b> and glow a color. That's you!</span></li>
+      <li><span><b>Shake</b> your Sphero awake</span></li>
+      <li><span>Click <b>Connect</b></span></li>
+      <li><span>Pick <b>SM‑…</b> and click <b>Pair</b></span></li>
     </ol>
     <div id="robots">
-      <div id="noRobots">Nothing connected yet</div>
+      <div id="noRobots">No Spheros yet</div>
     </div>
   </section>
 
   <!-- ===== right: controls ===== -->
   <section class="panel">
-    <h2>Joystick, color &amp; aim <span id="driveWho" style="color:var(--text)"></span></h2>
+    <h2>Controls <span id="driveWho" style="color:var(--text)"></span></h2>
     <div id="controls">
       <div id="stickWrap">
         <div id="stick" class="dead">
           <span class="fwdLabel">FORWARD</span>
           <div id="knob"></div>
-          <div id="stickOverlay">Connect a Sphero to start driving</div>
+          <div id="stickOverlay">Connect a Sphero first</div>
         </div>
       </div>
 
       <div>
         <div class="row">
-          <label>Top speed <output id="speedOut">120</output></label>
+          <label>Speed <output id="speedOut">120</output></label>
           <input id="speed" type="range" min="20" max="255" value="120">
-          <span id="speedTag">Slow and steady for indoors. Crank it up for the gym.</span>
         </div>
 
         <div class="row">
@@ -211,28 +230,32 @@
 
         <div class="row">
           <label>Aim</label>
-          <button id="aimBtn">🎯 Set which way is forward</button>
+          <button id="aimBtn">🎯 Aim</button>
           <div id="aimBox">
-            <p>The little <b>blue light</b> on the back is on. Use that Sphero's left/right keys, the joystick, or the slider to spin the ball until the blue light points <b>toward you</b>, then click Done.</p>
+            <p>Turn the ball until the <b>blue light</b> faces you.</p>
             <input id="aimSlider" type="range" min="0" max="359" value="0">
-            <button id="aimDone" class="primary">✅ Done, that's forward</button>
+            <button id="aimDone" class="primary">✅ Done</button>
           </div>
         </div>
 
         <div class="row">
-          <label>Inputs</label>
-          <div id="inputs">
-            <span class="chip on">Joystick</span>
-            <span class="chip on">Keyboard</span>
-            <span class="chip" id="padChip">Gamepad: none</span>
+          <label>Keys</label>
+          <div class="keymap">
+            <span class="what">Drive</span>
+            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span class="or">or</span><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span>
+            <span class="what">Faster</span>
+            <span>hold <kbd>Shift</kbd></span>
+            <span class="what">Stop</span>
+            <span><kbd>Space</kbd></span>
           </div>
-          <div class="hint">
-            <b>Two drivers, one keyboard:</b> the first Sphero drives with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> (turbo: left <kbd>Shift</kbd>),
-            the second with the arrow keys <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> (turbo: right <kbd>Shift</kbd>).
-            Click the keys badge on a card to swap. With only one Sphero, both sets drive it.<br>
-            <kbd>Space</kbd> stops everything · <kbd>1</kbd>–<kbd>9</kbd> select a card for the joystick, color and aim · <kbd>B</kbd> blinks it<br>
-            Game controllers: the first follows the WASD Sphero, the second follows the Arrows Sphero. Stick or D‑pad drives, bumpers change color, <kbd>A</kbd> blinks
-          </div>
+          <details class="more">
+            <summary>More controls</summary>
+            <ul>
+              <li>Two Spheros: the card badge says which keys drive each one. Use the <kbd>Shift</kbd> on your side. Click a badge to swap.</li>
+              <li><kbd>1</kbd> <kbd>2</kbd> pick a card for the joystick, color and aim. <kbd>B</kbd> blinks it.</li>
+              <li>Game controllers: stick drives, bumpers change color, A blinks. <span class="chip" id="padChip">Gamepad: none</span></li>
+            </ul>
+          </details>
         </div>
       </div>
     </div>

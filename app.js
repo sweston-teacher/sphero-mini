@@ -6,7 +6,7 @@
 
   // Shown next to the title so the teacher can tell at a glance whether a student has reloaded.
   // Bump on every deploy: +0.01 for small fixes, a bigger step for new features.
-  const VERSION = '1.05';
+  const VERSION = '1.06';
   if ($('#version')) $('#version').textContent = 'v' + VERSION;
   console.info('Sphero Drive v' + VERSION);
 
@@ -71,20 +71,19 @@
       text.textContent = `Connecting to ${connecting.map((r) => r.nick).join(' and ')}…`;
     } else if (lost.length) {
       if (ok.length) banner.classList.add('warn');
-      text.textContent = `${lost.map((r) => r.nick).join(' and ')} disconnected — shake it and press Reconnect`
-        + (ok.length ? ` · ${ok.map((r) => r.nick).join(' and ')} still connected` : '');
+      text.textContent = `${lost.map((r) => r.nick).join(' and ')} lost connection. Shake it, then click Reconnect.`;
     } else if (ok.length === 1) {
       banner.classList.add('ok');
-      text.textContent = `Connected — driving ${ok[0].nick}`;
+      text.textContent = `Connected: ${ok[0].nick}`;
     } else {
       banner.classList.add('ok');
-      text.textContent = 'Connected — ' + ok.map((r) => `${r.nick} on ${keysFor(r)}`).join(' · ');
+      text.textContent = 'Connected: ' + ok.map((r) => `${r.nick} (${keysFor(r)})`).join(' · ');
     }
-    $('#driveWho').textContent = active ? `— ${active.nick}` : '';
+    $('#driveWho').textContent = active ? `for ${active.nick}` : '';
     const canDrive = active && active.status === 'ok';
     $('#stickOverlay').hidden = !!canDrive;
     $('#stick').classList.toggle('dead', !canDrive);
-    if (!canDrive) $('#stickOverlay').textContent = robots.length ? 'Pick a connected Sphero to drive' : 'Connect a Sphero to start driving';
+    if (!canDrive) $('#stickOverlay').textContent = robots.length ? 'Click a connected Sphero' : 'Connect a Sphero first';
   }
 
   // ---------------------------------------------------------------- robot cards
@@ -192,17 +191,18 @@
       const msg = String(err.message || '');
       if (err.name === 'NotFoundError' && /cancel/i.test(msg)) return; // student closed the chooser
       if (/adapter|not available|powered/i.test(msg)) {
-        showProblem('No Bluetooth found on this computer.', 'Check that Bluetooth is turned on in Windows Settings. Many desktop PCs have no Bluetooth at all and need a small USB Bluetooth adapter.');
+        setBluetoothMissing(true);
       } else if (/disabled|policy|permission|SecurityError/i.test(msg + err.name)) {
-        showProblem('Bluetooth is blocked on this computer.', 'A school Chrome policy is blocking Web Bluetooth. Ask IT to allow it for this site (Chrome policy DefaultWebBluetoothGuardSetting / WebBluetoothAskForUrls).');
+        showProblem('Bluetooth is blocked on this computer. Ask your teacher.',
+          'For IT: allow Web Bluetooth for this site (Chrome policies DefaultWebBluetoothGuardSetting / WebBluetoothAskForUrls).');
       } else {
-        showProblem('Could not open the Bluetooth chooser.', `${err.name}: ${msg || 'unknown error'}`);
+        showProblem('Bluetooth didn\'t open. Ask your teacher.', `${err.name}: ${msg || 'unknown error'}`);
       }
       return;
     }
     let entry = robots.find((r) => r.id === robot.device.id);
     if (entry) {
-      toast(`${entry.nick} is already in the list — reconnecting it.`);
+      toast(`Reconnecting ${entry.nick}…`);
       return reconnect(entry);
     }
     const c = pickColor();
@@ -225,8 +225,7 @@
       renderAll();
       const [r, g, b] = hexToRgb(entry.color);
       await entry.robot.setColor(r, g, b);
-      const how = entry.keys && robots.length > 1 ? ` Drive it with ${KEYSETS[entry.keys].label}.` : '';
-      toast(`${entry.nick} is connected! Look for the ${entry.colorName.toLowerCase()} light.${how}`, 'ok');
+      toast(`${entry.nick} connected! Look for the ${entry.colorName.toLowerCase()} light.`, 'ok');
       blink(entry);
       refreshBattery(entry);
       if (!active || active.status !== 'ok') setActive(entry);
@@ -234,7 +233,7 @@
       console.error(err);
       entry.status = 'bad';
       renderAll();
-      toast(`Couldn't connect to ${entry.nick}. Shake it until it lights up, then press Reconnect.`, 'bad', 6000);
+      toast(`Couldn't connect. Shake ${entry.nick}, then click Reconnect.`, 'bad', 6000);
     }
   }
 
@@ -260,7 +259,7 @@
       toast(`${entry.nick} reconnected.`, 'ok');
     } catch {
       entry.status = 'bad'; renderAll();
-      toast(`${entry.nick} disconnected. Is it asleep or on the charger? Shake it and press Reconnect.`, 'bad', 7000);
+      toast(`${entry.nick} lost connection. Shake it, then click Reconnect.`, 'bad', 7000);
     }
   }
 
@@ -276,7 +275,7 @@
   }
 
   async function sleepRobot(entry) {
-    try { await entry.robot.sleep(); toast(`${entry.nick} is going to sleep. Shake it to wake it up.`); } catch (e) { toast(e.message, 'bad'); }
+    try { await entry.robot.sleep(); toast(`${entry.nick} is asleep. Shake it to wake it.`); } catch (e) { toast(e.message, 'bad'); }
   }
 
   async function blink(entry) {
@@ -504,7 +503,7 @@
     const target = aimTarget;
     aimTarget = null;
     $('#aimBox').classList.remove('on');
-    $('#aimBtn').textContent = '🎯 Set which way is forward';
+    $('#aimBtn').textContent = '🎯 Aim';
     if (!target || target.status !== 'ok') return Promise.resolve();
     if (!save) return target.robot.setBackLed(0).catch(() => {});
     return (async () => {
@@ -512,8 +511,8 @@
         await target.robot.resetYaw();
         await target.robot.setBackLed(0);
         target.heading = 0;
-        toast(`Forward is set for ${target.nick}!`, 'ok');
-      } catch (e) { toast('Could not set aim: ' + e.message, 'bad'); }
+        toast('Forward is set!', 'ok');
+      } catch (e) { toast('Aim didn\'t work. Try again.', 'bad'); }
     })();
   }
 
@@ -524,7 +523,7 @@
     aimTarget = active;
     aimHeading = active.heading; aimSent = null;
     $('#aimBox').classList.add('on');
-    $('#aimBtn').textContent = '✖ Cancel aiming';
+    $('#aimBtn').textContent = '✖ Cancel';
     active.robot.setBackLed(255).catch(() => {});
   });
   $('#aimSlider').addEventListener('input', (e) => { aimHeading = +e.target.value; });
@@ -533,34 +532,58 @@
   // ---------------------------------------------------------------- misc wiring
   $('#speed').addEventListener('input', (e) => { maxSpeed = +e.target.value; $('#speedOut').textContent = maxSpeed; });
   $('#connectBtn').addEventListener('click', connectNew);
-  window.addEventListener('gamepadconnected', (e) => toast(`Game controller connected: ${e.gamepad.id.split('(')[0].trim()}`, 'ok'));
+  window.addEventListener('gamepadconnected', () => toast('Game controller connected!', 'ok'));
 
   function showProblem(title, detail) {
-    const box = $('#unsupported');
-    box.innerHTML = '';
-    const b = document.createElement('b'); b.textContent = title;
-    const d = document.createElement('div'); d.textContent = detail; d.style.marginTop = '6px';
-    box.append(b, d);
-    box.style.display = 'block';
+    $('#problemTitle').textContent = title;
+    $('#problemDetail').textContent = detail || '';
+    $('#problemBox').hidden = false;
     toast(title, 'bad', 6000);
   }
 
-  async function checkBluetooth() {
+  // ---------------------------------------------------------------- Bluetooth stick
+  // Chrome on Windows often doesn't notice a USB Bluetooth stick plugged in after it started.
+  // Show one big, simple fix, and keep checking so the box disappears on its own if Chrome does notice.
+  const isEdge = /\bEdg\//.test(navigator.userAgent);
+  const RESTART_URL = isEdge ? 'edge://restart' : 'chrome://restart';
+  $('#restartCmd').textContent = RESTART_URL;
+  $('#copyRestart').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(RESTART_URL); toast('Copied! Click the address bar, press Ctrl+V, then Enter.', 'ok', 6000); }
+    catch { toast('Type it in the address bar instead.', 'bad'); }
+  });
+
+  let btMissing = false;
+  function setBluetoothMissing(missing) {
+    if (missing === btMissing) {
+      if (missing) $('#btHelp').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    btMissing = missing;
+    $('#btHelp').hidden = !missing;
+    if (missing) toast('Bluetooth stick not found.', 'bad', 5000);
+    else toast('Bluetooth found! 🎉', 'ok');
+  }
+
+  async function pollBluetooth() {
+    if (!navigator.bluetooth || !navigator.bluetooth.getAvailability) return;
+    try { setBluetoothMissing(!(await navigator.bluetooth.getAvailability())); }
+    catch (e) { console.warn('getAvailability failed', e); }
+  }
+
+  function checkBluetooth() {
     if (!window.isSecureContext) {
-      showProblem('This page must be opened over https:// (or from localhost) for Bluetooth to work.', location.href);
+      showProblem('This page must be opened with https://', location.href);
       $('#connectBtn').disabled = true;
       return;
     }
     if (!SpheroMini.supported) {
-      $('#unsupported').style.display = 'block';
+      showProblem('Open this page in Google Chrome.', 'This browser can\'t use Bluetooth. Chrome or Edge on Windows, Mac, Chromebook or Android works.');
       $('#connectBtn').disabled = true;
       return;
     }
-    try {
-      if (navigator.bluetooth.getAvailability && !(await navigator.bluetooth.getAvailability())) {
-        showProblem('No Bluetooth found on this computer.', 'Turn Bluetooth on in Windows Settings (Settings → Bluetooth & devices). If there is no Bluetooth switch there, this PC has no Bluetooth radio and needs a USB Bluetooth adapter.');
-      }
-    } catch (e) { console.warn('getAvailability failed', e); }
+    pollBluetooth();
+    setInterval(pollBluetooth, 3000);
+    if (navigator.bluetooth.addEventListener) navigator.bluetooth.addEventListener('availabilitychanged', pollBluetooth);
   }
   checkBluetooth();
   renderAll();
