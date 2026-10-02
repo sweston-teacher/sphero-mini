@@ -6,7 +6,7 @@
 
   // Shown next to the title so the teacher can tell at a glance whether a student has reloaded.
   // Bump on every deploy: +0.01 for small fixes, a bigger step for new features.
-  const VERSION = '1.06';
+  const VERSION = '1.07';
   if ($('#version')) $('#version').textContent = 'v' + VERSION;
   console.info('Sphero Drive v' + VERSION);
 
@@ -95,9 +95,10 @@
         <span class="drivetag">Selected</span>
         <div class="top">
           <span class="swatch"></span>
-          <span class="name" title="Click to rename"></span>
+          <span class="name"></span>
+          <button class="rename" data-act="rename" title="Rename">✏️</button>
         </div>
-        <button class="keys" data-act="keys" title="Click to change which keys drive this Sphero"></button>
+        <span class="keys"></span>
         <div class="status"><span class="dot"></span><span class="statusText"></span></div>
         <div class="meta"><span class="id"></span> · <span class="batt">🔋 —</span></div>
         <div class="actions">
@@ -107,11 +108,11 @@
           <button data-act="disconnect" class="danger">✕ Remove</button>
         </div>`;
       el.addEventListener('click', (e) => {
-        if (e.target.closest('button, input')) return;
+        // Clicking anywhere on a card picks it, except Remove and the rename box.
+        if (e.target.closest('[data-act=disconnect], input')) return;
         setActive(entry);
       });
-      el.querySelector('.name').addEventListener('click', () => editNick(entry));
-      el.querySelector('[data-act=keys]').addEventListener('click', () => cycleKeys(entry));
+      el.querySelector('[data-act=rename]').addEventListener('click', () => editNick(entry));
       el.querySelector('[data-act=blink]').addEventListener('click', () => blink(entry));
       el.querySelector('[data-act=reconnect]').addEventListener('click', () => reconnect(entry));
       el.querySelector('[data-act=sleep]').addEventListener('click', () => sleepRobot(entry));
@@ -137,7 +138,12 @@
     el.querySelector('[data-act=sleep]').disabled = entry.status !== 'ok';
     $('#noRobots').style.display = robots.length ? 'none' : '';
   }
-  function renderAll() { robots.forEach(renderCard); updateBanner(); updateSwatches(); }
+  function renderAll() {
+    robots.forEach(renderCard);
+    updateBanner();
+    updateSwatches();
+    $('#swapKeys').hidden = !(keysOwner('wasd') && keysOwner('arrows'));
+  }
 
   function editNick(entry) {
     const nameEl = entry.el.querySelector('.name');
@@ -165,16 +171,16 @@
   const keysOwner = (set) => robots.find((r) => r.keys === set);
   const freeKeySet = () => KEYSET_ORDER.find((k) => !keysOwner(k)) || null;
 
-  // Click the badge to step WASD → Arrows → none. Taking a set another Sphero has swaps them.
-  function cycleKeys(entry) {
-    const order = [...KEYSET_ORDER, null];
-    const next = order[(order.indexOf(entry.keys) + 1) % order.length];
-    const other = next && keysOwner(next);
-    if (other && other !== entry) { stopRobot(other); other.keys = entry.keys; }
-    stopRobot(entry);
-    entry.keys = next;
+  // One deliberate button (under More controls) swaps WASD and Arrows between the two Spheros.
+  function swapKeys() {
+    const a = keysOwner('wasd'), b = keysOwner('arrows');
+    if (!a || !b) return;
+    stopRobot(a); stopRobot(b);
+    a.keys = 'arrows'; b.keys = 'wasd';
     renderAll();
+    toast(`Swapped! ${b.nick} uses WASD, ${a.nick} uses Arrows.`, 'ok');
   }
+  $('#swapKeys').addEventListener('click', swapKeys);
 
   // ---------------------------------------------------------------- connecting
   function pickColor() {

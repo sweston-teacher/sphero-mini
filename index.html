@@ -89,9 +89,9 @@
   }
   .robot.active { border-color: var(--robot-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--robot-color) 35%, transparent); }
   .robot.dead { opacity: .75; border-color: var(--red); border-left-color: var(--robot-color); }
-  .robot .top { display: flex; align-items: center; gap: 10px; }
+  .robot .top { display: flex; align-items: center; gap: 10px; padding-right: 96px; }
   .robot .swatch { width: 34px; height: 34px; border-radius: 50%; background: var(--robot-color); box-shadow: 0 0 12px var(--robot-color); flex: none; }
-  .robot .name { font-weight: 700; font-size: 22px; flex: 1; min-width: 0; }
+  .robot .name { font-weight: 700; font-size: 22px; flex: 0 1 auto; min-width: 0; }
   .robot .name input { width: 100%; font-weight: 700; font-size: 20px; }
   .robot .id { color: var(--muted); font-size: 14px; font-family: ui-monospace, Menlo, monospace; }
   .robot .status { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 19px; }
@@ -104,6 +104,9 @@
   .robot .actions button { padding: 9px 13px; font-size: 17px; }
   .robot .drivetag { position: absolute; top: 10px; right: 10px; font-size: 13px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: #061; background: var(--green); padding: 3px 8px; border-radius: 99px; display: none; }
   .robot.active .drivetag { display: block; }
+  .robot .rename { padding: 4px 8px; font-size: 16px; background: transparent; opacity: .6; }
+  .robot .rename:hover { opacity: 1; background: var(--panel); }
+  #swapKeys { display: block; margin-top: 8px; font-size: 16px; }
   .robot .keys {
     justify-self: start; padding: 6px 12px; border-radius: 99px; font-weight: 800; font-size: 19px; letter-spacing: .3px;
     background: #2a3550; color: #cfe0ff; border: 2px solid #4f6fb0;
@@ -251,7 +254,8 @@
           <details class="more">
             <summary>More controls</summary>
             <ul>
-              <li>Two Spheros: the card badge says which keys drive each one. Use the <kbd>Shift</kbd> on your side. Click a badge to swap.</li>
+              <li>Two Spheros: each card says which keys drive it. Use the <kbd>Shift</kbd> on your side.
+                <button id="swapKeys" type="button" hidden>⇄ Swap WASD and Arrows</button></li>
               <li><kbd>1</kbd> <kbd>2</kbd> pick a card for the joystick, color and aim. <kbd>B</kbd> blinks it.</li>
               <li>Game controllers: stick drives, bumpers change color, A blinks. <span class="chip" id="padChip">Gamepad: none</span></li>
             </ul>
