@@ -306,7 +306,18 @@ Get Active Color Palette.
 | `16` (drive) | `01 06 07 0B 0E 0F 20 21 22 32 33 34 35 36 37 41 42 43 44 45 46 49 4A 4B 4C 4F 50 51` | mostly |
 | `15` (screen) | `01 02 03 05 06 07 08 09 0A 0B 0C 0E 10 11 12 14 15` | yes |
 
-None of the hidden commands has been run. Their purpose is unknown.
+**Run with no payload on a spare ball (BP-8145, 2026-10-09), health checked after each one; the ball was unharmed**
+(ping, battery and screen mode normal throughout; built-in default face still plays afterwards):
+
+| Group | Result |
+| --- | --- |
+| `1B` (`1C 1E 20`) | all answer `04` "wrong mode": locked outside the normal "user" mode (console `mode` = user) |
+| `21` (13 commands) | all answer `04` "wrong mode": locked the same way |
+| `23` | looks like **firmware update (OTA)**: `03` → `00 02 00 18 06 4A` (2.24.1610); `0C` → `01 01` + version (image slot info); `04` → `01 E6` (486, plausibly max chunk size); `07`, `0B` → `01`; `0D` → `00`; `00` → empty OK; `08`, `09` need data (`05` bad length, nothing done); `05` → `06` "failed" (consistent with "apply update" when nothing is staged) |
+
+Groups `1B` and `21` probably hold factory tools; if a picture-upload channel exists, it is most likely behind that
+mode lock. Unlocking it would mean switching the ball out of user mode (console `factory`, or the `12` system-mode
+commands), which we have not tried.
 
 **Debug console** on characteristic `00010003-…`: plain text lines ending in newline, answers end with `>>>`.
 `list` prints its 167 commands (`list <word>` filters). `help` prints a Colossal Cave Adventure joke.
@@ -336,4 +347,4 @@ picture library, so it is stored elsewhere (likely an external flash chip) and l
 ## Still to capture
 
 `listenForIRMessage` receiving a message (needs two balls), `registerSoftwareButton` payloads, `speak` (runs on the
-device, likely no Bluetooth). Device groups `1B`, `21`, `23` are supported by the ball but absent from Sphero's table.
+device, likely no Bluetooth). Device groups `1B` and `21` are locked to a non-user mode (see above).
