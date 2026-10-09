@@ -16,9 +16,8 @@ python3 -m http.server 8765
 
 then open http://localhost:8765 in Chrome.
 
-**For a classroom**, put the three files (`index.html`, `sphero.js`, `app.js`) on any https host.
-GitHub Pages is free and works well: make a repo, upload the files, turn on Pages in the repo settings,
-and give students the link.
+**For a classroom**, put the site files (`index.html`, `bolt.html`, `style.css`, `sphero.js`, `app.js`) on any https host
+and give students the link. Pick a host your school network allows.
 
 ## Classroom ritual
 
@@ -49,8 +48,22 @@ Two students can drive two Spheros from one keyboard.
 - Space stops every Sphero. Keys 1-9 select a card, and the color buttons, Aim, and B (blink) apply to the selected card.
 - A third Sphero on the same computer gets no keys and drives with the joystick when selected. If one of the first two is removed, it inherits the free key set.
 
+## BOLT+ page
+
+`bolt.html` is a separate page for Sphero BOLT+ robots (Bluetooth names `BP-xxxx`). It drives the same way as the
+Mini page, with the same Aim button. Each BOLT+ shows its color on all six lights and on its screen.
+
+- Wake a BOLT+ by lifting it off its charger. Its screen shows a code; pick the same code in the Bluetooth list.
+- The BOLT+ has no compass, so "forward" is set with Aim, for example toward a sign on the east wall.
+- If a BOLT+ was last used in Sphero Edu, it may sit limp (Edu turns stabilization off when a program ends).
+  Connecting here turns it back on.
+
+Protocol notes for the BOLT+, with what was recorded, tested, or still unknown: `docs/BOLT_PLUS_PROTOCOL.md`.
+
 ## Files
 
-- `index.html` – page and styles
-- `sphero.js` – small Sphero Mini driver (Web Bluetooth + Sphero API v2 packets)
+- `index.html` – Mini page
+- `bolt.html` – BOLT+ page
+- `style.css` – styles shared by both pages
+- `sphero.js` – small Sphero driver for the Mini and BOLT+ (Web Bluetooth + Sphero API v2 packets)
 - `app.js` – UI, inputs, drive loop

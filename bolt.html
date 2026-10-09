@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sphero Drive</title>
+<title>Sphero Drive · BOLT+</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
-  <h1>🎮 Sphero Drive <span id="version" title="Site version. Reload the page if this is lower than expected."></span></h1>
-  <div id="banner"><span class="dot"></span><span id="bannerText">No Sphero connected</span></div>
-  <a class="pagelink" href="bolt.html">BOLT+ page →</a>
+  <h1>🎮 Sphero Drive <span class="model">BOLT+</span> <span id="version" title="Site version. Reload the page if this is lower than expected."></span></h1>
+  <div id="banner"><span class="dot"></span><span id="bannerText">No BOLT+ connected</span></div>
+  <a class="pagelink" href="./">← Mini page</a>
 </header>
 
 <section id="btHelp" class="alert" hidden>
@@ -32,14 +32,14 @@
   <!-- ===== left: connect + robots ===== -->
   <section class="panel">
     <h2>Robots</h2>
-    <button id="connectBtn" class="primary">＋ Connect a Sphero</button>
+    <button id="connectBtn" class="primary">＋ Connect a BOLT+</button>
     <ol class="steps">
-      <li><span><b>Shake</b> your Sphero awake</span></li>
-      <li><span>Click <b>Connect</b></span></li>
-      <li><span>Pick <b>SM‑…</b> and click <b>Pair</b></span></li>
+      <li><span><b>Lift it off the charger.</b> Its screen shows a code.</span></li>
+      <li><span>Set it on the floor, click <b>Connect</b></span></li>
+      <li><span>Pick the <b>same code</b> and click <b>Pair</b></span></li>
     </ol>
     <div id="robots">
-      <div id="noRobots">No Spheros yet</div>
+      <div id="noRobots">No BOLT+ yet</div>
     </div>
   </section>
 
@@ -51,7 +51,7 @@
         <div id="stick" class="dead">
           <span class="fwdLabel">FORWARD</span>
           <div id="knob"></div>
-          <div id="stickOverlay">Connect a Sphero first</div>
+          <div id="stickOverlay">Connect a BOLT+ first</div>
         </div>
       </div>
 
@@ -103,7 +103,7 @@
 
 <div id="toasts"></div>
 
-<script>window.SPHERO_PAGE = { models: ['mini'], drive: 'heading' };</script>
+<script>window.SPHERO_PAGE = { models: ['boltplus'] };</script>
 <script src="sphero.js"></script>
 <script src="app.js"></script>
 </body>

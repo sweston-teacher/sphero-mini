@@ -1,0 +1,215 @@
+# Sphero BOLT+ Bluetooth protocol notes
+
+What we know about talking to a Sphero BOLT+ over Web Bluetooth, and how we know it.
+Nothing here comes from official Sphero protocol documentation (none is published). Every entry is one of:
+
+- **Recorded**: captured from the official Sphero Edu web app (edu.sphero.com) while a known function ran.
+- **Tested**: sent by us to a real BOLT+ and the result checked (ball reply, sensor stream, or a person watching).
+- **Probed**: we only know the command exists or how long its payload is.
+- **Unknown**: seen, meaning not established. Do not guess.
+
+Sources: balls BP-6226 and BP-7314 (manufacture date 2025-03-21 per `11 33`), Chrome on macOS, 2026-10-09.
+Function names and "compatible robots" come from Sphero Edu's own API definitions file
+(`core/canvas-api-definitions.ts`, loaded by the Edu code editor).
+
+## Connecting
+
+| Fact | Status |
+| --- | --- |
+| Advertised name `BP-xxxx`. The ball's screen shows the same code when awake. | Tested |
+| Service `00010001-574f-4f20-5370-6865726f2121` | Tested |
+| Characteristic `00010002-…` = command channel (write, write-without-response, notify) | Tested |
+| Characteristic `00010003-…` = a text debug console ("That's not a command.", `>>>` prompt). Leave alone. | Tested |
+| **No unlock step.** The Mini/BOLT "usetheforce...band" service `00020001-…` does not exist on the BOLT+. | Tested |
+| Writes longer than **20 bytes are silently dropped**. Split packets into 20-byte pieces (the framing allows it). | Tested |
+| Wakes when lifted off or placed on the charger. No power button. | Sourcewell BOLT+ guide |
+| Sphero Edu also requests optional service `22bb746f-2ba0-7554-2d6f-726568705327` (older Sphero BLE service). Not needed. | Recorded |
+
+## Packet format (same as Mini / BOLT, "API v2")
+
+```
+8D  FLAGS  [TID]  [SID]  DID  CID  SEQ  [ERR]  DATA…  CHK  D8
+```
+
+- `CHK` = `~(sum of bytes between 8D and CHK) & 0xFF`
+- Inside the packet, `8D`, `D8`, `AB` are escaped as `AB 05`, `AB 50`, `AB 23`.
+- FLAGS bits: `01` is a response, `02` requests a response, `08` resets the sleep timer, `10` has TID, `20` has SID.
+- Sphero Edu sends FLAGS `3A` with TID `11`, SID `01` on everything except wake (`0A`, no IDs).
+- **Sending without TID/SID also works** for every command below (Tested). Replies then carry only a SID.
+- Async notifications from the ball have bit `01` clear and SEQ `FF`.
+- Error codes: `00` ok, `01` bad device, `02` unknown command, `05` bad length, `07` bad value, `09` wrong processor.
+  Target `12` (second processor) answers `09` to everything tested: the BOLT+ handles all of this on processor 1.
+
+## Lights: 18 channels, 6 RGB LEDs (DID `1A`, CID `1A`, 32-bit mask)
+
+Payload: `mask(4 bytes, big endian)` then one byte per set bit, lowest bit first. Recorded from each Edu function.
+
+| LED | Mask bits | Mask | Edu function |
+| --- | --- | --- | --- |
+| Left (part 1) | 0–2 | `0x00000007` | `setLeftLed` |
+| Back | 3–5 | `0x00000038` | `setBackLed` (a single number sets blue only) |
+| Right (both parts) | 6–11 | `0x00000FC0` | `setRightLed` |
+| Front | 12–14 | `0x00007000` | `setFrontLed` |
+| Left (part 2) | 15–17 | `0x00038000` | `setLeftLed` |
+| All six | 0–17 | `0x0003FFFF` | `setMainLed` |
+
+Our early guess "0x07 = front" was wrong: bits 0–2 are one of the left LEDs.
+
+## Screen (DID `15`), BOLT+ only
+
+| Command | Payload | Meaning | Edu function | Status |
+| --- | --- | --- | --- | --- |
+| `15 02` | r g b | fill screen with a color | `setDisplayColor` | Recorded, Tested |
+| `15 03` | text, `00`, text r g b, background r g b, font, `00` | show text | `setDisplayText` | Recorded |
+| `15 07` | — | clear screen | `clearDisplay` | Recorded |
+| `15 0B` | n | rotate screen n quarter turns | `setDisplayRotation` | Recorded |
+| `15 10` | 4-byte id, loop | show built-in image/animation by id | `setDisplayImage`, `setDisplayAnimation` | Recorded |
+| `15 14` | 4-byte mask | live sensor readout (1 = orientation, 2 accel, 4 total accel, 8 location, 16 velocity, 32 speed, 64 gyro, 128 light) | `setLiveSensorData` | Recorded |
+| `15 11` | — | sent twice after a non-looping animation | — | Unknown |
+| `15 12` | 00 / 01 | sent at program end (00) / start (01) | — | Unknown |
+
+Known ids for `15 10`: `0x0000000A` = default face (Edu restores this, looping), `0x00000002` = aim screen,
+`0x00000267` = "apple" image, `0x0000042D` = "applause" animation.
+
+## Matrix-style drawing (DID `1A`), drawn on the BOLT+ screen
+
+| Command | Payload | Edu function |
+| --- | --- | --- |
+| `1A 2F` | r g b | fill whole matrix (Edu uses black at program start) |
+| `1A 2D` | x y r g b | `drawMatrixPixel` |
+| `1A 3D` | x1 y1 x2 y2 r g b | `drawMatrixLine` |
+| `1A 3E` | x1 y1 x2 y2 r g b | `drawMatrixFill` |
+| `1A 42` | r g b char | `setMatrixCharacter` |
+| `1A 3B` | r g b speed loop text `00` | `scrollMatrixText` |
+| `1A 38` | — | `clearMatrix` |
+| `1A 3A` | n | `setMatrixRotation` (quarter turns) |
+| `1A 39` | fps transition | `overrideMatrixAnimationFramerate` (`00 00` = reset) |
+| `1A 36` / `1A 37` | — | `pauseMatrixAnimation` / `resumeMatrixAnimation` |
+
+All Recorded. `registerMatrixAnimation` / `playMatrixAnimation` not captured yet.
+
+## Driving (DID `16`)
+
+| Command | Payload | Meaning | Edu function | Status |
+| --- | --- | --- | --- | --- |
+| `16 07` | speed, heading(2), flags | roll at speed toward heading (0 = aim direction, clockwise) | `setHeading`, `setSpeed`, `stopRoll`, Drive mode | Recorded, Tested |
+| `16 06` | — | reset aim: current facing becomes heading 0 | `resetAim`, Aim "done" | Recorded, Tested |
+| `16 51` | 0/1 | **stabilization off/on** (BOLT used `16 0C`, absent here) | `setStabilization` | Recorded |
+| `16 4C` | heading(2), speed, seconds(float32) | timed roll; ball sends `16 4D` when done | `roll(h, s, t)` | Recorded |
+| `16 49` | heading(int16), speed, meters(float32) | roll a distance; ball sends `16 4E` when done | `rollToDistance` | Recorded |
+| `16 44` | — | status poll, replies `0F`; Edu polls it during timed/distance rolls | — | Unknown |
+| `16 01` | modeL, powerL, modeR, powerR | raw motors (mode 1 forward, 2 reverse); Edu turns stabilization off first | `rawMotor` | Recorded |
+| `16 35` | turn(int8), speed(int8), flags | turn-rate + speed driving (spins in place fast) | — | Tested |
+| `16 32`–`16 37` | 8, 2, 9, 3, 8, 3 bytes | newer drive family (tank / RC / with-yaw, SI and normalized) | — | Probed |
+| `16 0F` | ? | ran when probed with zero bytes; the spherov2 library calls this "pitch torque modification" | — | Probed (avoid) |
+| `16 3F` (async) | — | sent after stabilization/controller changes | — | Recorded |
+
+Speeds: Edu's speed 40 became `0x1A` in `16 4C`/`16 49` but `0x34` in `16 07` from `setSpeed`. Edu Drive mode at
+full speed sends `0xA6` (166). Treat the speed byte as raw 0–255 and scale in our own code.
+
+`spin(360, 1)` sends no special command: Edu steps `16 07` headings about 8 times a second.
+
+**Important:** Sphero Edu sends `16 51 00` (stabilization **off**) when any program ends, and the ball stays
+limp until something turns it back on. Our site sends `16 51 01` after connecting.
+
+## Sensors (DID `18`)
+
+Streaming, as Sphero Edu configures it while a program runs:
+
+```
+18 00   interval(2 bytes, ms)  count(1)  mask(4)      Edu: 00 96 | 00 | 00 07 E0 78   (150 ms)
+18 0C   extended mask(4)                              Edu: 03 84 00 00
+```
+
+The ball then sends `18 02` notifications with 14 big-endian float32 values (Tested, decoded on BP-7314):
+
+| # | Value | Units |
+| --- | --- | --- |
+| 0–2 | pitch, roll, yaw | degrees (yaw is counter-clockwise positive, so heading 90 reads about -90) |
+| 3–5 | acceleration x, y, z | g (z ≈ 1 at rest) |
+| 6–7 | location x, y | meters from program start |
+| 8–9 | velocity x, y | meters per second |
+| 10–12 | gyroscope x, y, z | degrees per second |
+| 13 | ambient light | lux |
+
+Other sensor commands:
+
+| Command | Payload | Meaning | Status |
+| --- | --- | --- | --- |
+| `18 30` | — | ambient light, float32 lux | Tested (199 lux indoors) |
+| `18 13` | — | reset location to 0,0 | Recorded |
+| `18 47` | `00 01 00 FA` | configure collision detection (sent at connect) | Recorded |
+| `18 48` | 01 | enable collision notifications; ball sends `18 49` on a bump | Recorded |
+| `18 0F` | 01 | enable "gyro max" notifications | Recorded |
+| `18 5A` | `4B 82` | sent at connect, ball answers error `07` | Unknown |
+| `18 25` | — | original BOLT "calibrate compass": **unknown command on BOLT+** | Tested |
+
+**No compass.** Edu's API marks `calibrateCompass`, `setCompassDirection`, `getCompassDirection` as BOLT only.
+Forward must be set with Aim.
+
+## Infrared (DID `18`)
+
+| Command | Payload | Edu function |
+| --- | --- | --- |
+| `18 27` | far near | `startIRBroadcast(near, far)` |
+| `18 29` | — | `stopIRBroadcast` |
+| `18 28` | far near | `startIRFollow` |
+| `18 32` | — | `stopIRFollow` |
+| `18 33` | far near | `startIREvade` |
+| `18 34` | — | `stopIREvade` |
+| `18 3F` | channel, 4 × intensity | `sendIRMessage(channel, intensity)` |
+| `18 3E` | 0/1 | IR message notifications off/on (`listenForIRMessage`) |
+
+All Recorded with one ball (nothing to follow, so behavior not observed).
+
+## Power and system info
+
+| Command | Meaning | Reply seen | Status |
+| --- | --- | --- | --- |
+| `13 0D` | wake | — | Tested |
+| `13 10` | battery percent | e.g. `32` = 50% | Tested; Edu polls every 10 s |
+| `13 03` | battery voltage (Mini) | error `02`: not on BOLT+ | Tested |
+| `13 17` | battery voltage state | `01` | Recorded |
+| `13 1B` 01 | enable battery-state notifications | — | Recorded |
+| `13 1F` | charger state | `01` | Recorded |
+| `13 20` 01 | enable charger notifications | — | Recorded |
+| `11 00` | firmware version | 6 bytes | Recorded |
+| `11 03` | board revision | `02` | Recorded |
+| `11 13` | stats id | 2 bytes | Recorded |
+| `11 33` | manufacturing date | `07E9 03 15` = 2025-03-21 | Recorded |
+| `11 38` | SKU | ASCII | Recorded |
+| `11 47` | 6 bytes, looks like the Bluetooth address | — | Unknown |
+| `1D 15` | first command Edu sends; reply `01` | — | Unknown |
+
+## What Sphero Edu sends
+
+**On connect:** `1D 15`, wake, `11 38`, `11 00` ×2, `11 13`, `13 17`, `13 1B 01`, `13 20 01`, `11 47`,
+all LEDs white, clear screen, default face, collision setup (`18 47`, `18 5A`, `18 48`, `18 0F`), streaming off,
+`13 1F`, `11 47`, `11 03`, `11 33`, then battery percent every 10 s.
+
+**Program start:** LEDs off, back LED off, matrix black, stop, reset location, reset aim, stabilization on,
+clear screen, `15 12 01`, streaming on (masks above).
+
+**Program end:** streaming off, stop, all IR off, IR messages off, **stabilization off**, clear matrix,
+matrix rotation 0, matrix fps reset, clear screen, default face, LEDs white, `15 12 00`.
+
+**Aim (Drive mode):** all LEDs off, back LED blue (`1A 1A` mask `3FFFF`, only channel 5 = FF), matrix black,
+aim screen (`15 10 … 02 01`), `16 07` speed 0 at the chosen heading while rotating, then on Done:
+LEDs off, `16 06` reset aim, clear screen, default face, LEDs white.
+
+**Drive mode:** `16 51 01`, `16 06`, then `16 07` resent about every 500 ms (full speed `A6`).
+
+**Events** (`registerEvent`): send nothing. Edu detects collisions, freefall, landing, charging, etc. from the
+stream and from the notifications it enabled at connect.
+
+## Turning observations (not yet conclusive)
+
+- Standing still, `16 07` turns the ball to the new heading in under 0.5 s (yaw from the stream, both balls).
+- While rolling at raw speed 60, the inner drive also swung 90° in about 0.2 s, but the ball then barely moved
+  while the drive tilted 35–70°. This looked like the ball pushing against an obstacle; the test ran unattended.
+  Repeat with someone watching before changing how our site turns.
+
+## Still to capture
+
+`registerMatrixAnimation` / `playMatrixAnimation`, `listenForIRMessage` receiving a message (needs two balls),
+`registerSoftwareButton` payloads, `speak` (runs on the device, likely no Bluetooth), and the unknowns above.

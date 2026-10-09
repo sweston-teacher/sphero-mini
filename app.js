@@ -4,9 +4,14 @@
 
   const $ = (sel) => document.querySelector(sel);
 
+  // Each page says which balls it talks to: index.html = Minis, bolt.html = BOLT+s.
+  // (Car-style driving was tried for the BOLT+ and dropped: you can't see which way a BOLT+ faces.)
+  const PAGE = Object.assign({ models: ['mini'] }, window.SPHERO_PAGE || {});
+  const BALL = PAGE.models.length === 1 && PAGE.models[0] === 'boltplus' ? 'BOLT+' : 'Sphero';
+
   // Shown next to the title so the teacher can tell at a glance whether a student has reloaded.
   // Bump on every deploy: +0.01 for small fixes, a bigger step for new features.
-  const VERSION = '1.07';
+  const VERSION = '1.08';
   if ($('#version')) $('#version').textContent = 'v' + VERSION;
   console.info('Sphero Drive v' + VERSION);
 
@@ -33,6 +38,7 @@
 
   // robots: { robot, id, nick, customNick, color, colorName, status, battery, keys, heading, moving, el }
   const robots = [];
+  window.__spheros = robots; // debugging handle
   let active = null;        // the selected card: joystick, color, aim and the B key apply to it
   let maxSpeed = 120;
 
@@ -65,7 +71,7 @@
     const keysFor = (r) => (r.keys ? KEYSETS[r.keys].label : 'joystick');
     banner.className = '';
     if (!robots.length) {
-      text.textContent = 'No Sphero connected';
+      text.textContent = `No ${BALL} connected`;
     } else if (connecting.length) {
       banner.classList.add('warn');
       text.textContent = `Connecting to ${connecting.map((r) => r.nick).join(' and ')}…`;
@@ -83,7 +89,7 @@
     const canDrive = active && active.status === 'ok';
     $('#stickOverlay').hidden = !!canDrive;
     $('#stick').classList.toggle('dead', !canDrive);
-    if (!canDrive) $('#stickOverlay').textContent = robots.length ? 'Click a connected Sphero' : 'Connect a Sphero first';
+    if (!canDrive) $('#stickOverlay').textContent = robots.length ? `Click a connected ${BALL}` : `Connect a ${BALL} first`;
   }
 
   // ---------------------------------------------------------------- robot cards
@@ -132,7 +138,8 @@
     const st = el.querySelector('.status');
     st.className = 'status ' + ({ ok: 'ok', connecting: 'busy', bad: 'bad' }[entry.status]);
     el.querySelector('.statusText').textContent = { ok: 'Connected', connecting: 'Connecting…', bad: 'Disconnected' }[entry.status];
-    el.querySelector('.batt').textContent = entry.battery == null ? '🔋 —' : `🔋 ${entry.battery.pct}% (${entry.battery.volts.toFixed(2)} V)`;
+    const b = entry.battery;
+    el.querySelector('.batt').textContent = b == null ? '🔋 —' : b.volts == null ? `🔋 ${b.pct}%` : `🔋 ${b.pct}% (${b.volts.toFixed(2)} V)`;
     el.querySelector('[data-act=reconnect]').style.display = entry.status === 'bad' ? '' : 'none';
     el.querySelector('[data-act=blink]').disabled = entry.status !== 'ok';
     el.querySelector('[data-act=sleep]').disabled = entry.status !== 'ok';
@@ -191,7 +198,7 @@
   async function connectNew() {
     let robot;
     try {
-      robot = await SpheroMini.request();
+      robot = await SpheroMini.request(PAGE.models);
     } catch (err) {
       console.error('requestDevice failed:', err.name, err.message);
       const msg = String(err.message || '');
@@ -306,7 +313,10 @@
         const pct = Math.round(Math.max(0, Math.min(1, (volts - 3.55) / (4.15 - 3.55))) * 100);
         entry.battery = { volts, pct };
         renderCard(entry);
+        return;
       }
+      const pct = await entry.robot.getBatteryPercent(); // BOLT+ reports a percentage, not a voltage
+      if (pct != null) { entry.battery = { volts: null, pct }; renderCard(entry); }
     } catch {}
   }
   setInterval(() => robots.forEach(refreshBattery), 30000); // also keeps the Mini awake
@@ -326,7 +336,7 @@
   }
 
   function applyColor(hex, target = active) {
-    if (!target || target.status !== 'ok') { toast('Connect a Sphero first.'); return; }
+    if (!target || target.status !== 'ok') { toast(`Connect a ${BALL} first.`); return; }
     target.color = hex;
     const name = paletteName(hex);
     target.colorName = name || 'Custom';
@@ -504,10 +514,12 @@
   }
   setInterval(tick, 50);
 
+
   // ---------------------------------------------------------------- aim mode
   function endAim(save) {
     const target = aimTarget;
     aimTarget = null;
+    if (!$('#aimBox')) return Promise.resolve();
     $('#aimBox').classList.remove('on');
     $('#aimBtn').textContent = '🎯 Aim';
     if (!target || target.status !== 'ok') return Promise.resolve();
@@ -522,9 +534,9 @@
     })();
   }
 
-  $('#aimBtn').addEventListener('click', () => {
+  if ($('#aimBtn')) $('#aimBtn').addEventListener('click', () => {
     if (aimTarget) { endAim(false); return; }
-    if (!active || active.status !== 'ok') { toast('Connect a Sphero first.'); return; }
+    if (!active || active.status !== 'ok') { toast(`Connect a ${BALL} first.`); return; }
     stopRobot(active);
     aimTarget = active;
     aimHeading = active.heading; aimSent = null;
@@ -532,8 +544,8 @@
     $('#aimBtn').textContent = '✖ Cancel';
     active.robot.setBackLed(255).catch(() => {});
   });
-  $('#aimSlider').addEventListener('input', (e) => { aimHeading = +e.target.value; });
-  $('#aimDone').addEventListener('click', () => endAim(true));
+  if ($('#aimSlider')) $('#aimSlider').addEventListener('input', (e) => { aimHeading = +e.target.value; });
+  if ($('#aimDone')) $('#aimDone').addEventListener('click', () => endAim(true));
 
   // ---------------------------------------------------------------- misc wiring
   $('#speed').addEventListener('input', (e) => { maxSpeed = +e.target.value; $('#speedOut').textContent = maxSpeed; });
