@@ -8,9 +8,10 @@ Nothing here comes from official Sphero protocol documentation (none is publishe
 - **Probed**: we only know the command exists or how long its payload is.
 - **Unknown**: seen, meaning not established. Do not guess.
 
-Sources: balls BP-6226 and BP-7314 (manufacture date 2025-03-21 per `11 33`), Chrome on macOS, 2026-10-09.
-Function names and "compatible robots" come from Sphero Edu's own API definitions file
-(`core/canvas-api-definitions.ts`, loaded by the Edu code editor).
+Sources: balls BP-6226 and BP-7314 (manufacture date 2025-03-21, firmware 2.24.1610), Chrome on macOS, 2026-10-09.
+Function names and "compatible robots" come from Sphero Edu's API definitions file
+(`core/canvas-api-definitions.ts`, loaded by the Edu code editor). **Command names** come from the command table in
+Sphero Edu's `/code/sdk/toybox.js`; the full table is in `docs/SPHERO_COMMAND_TABLE.md`.
 
 ## Connecting
 
@@ -65,8 +66,8 @@ Our early guess "0x07 = front" was wrong: bits 0–2 are one of the left LEDs.
 | `15 0B` | n | rotate screen n quarter turns | `setDisplayRotation` | Recorded |
 | `15 10` | 4-byte id, loop | show built-in image/animation by id | `setDisplayImage`, `setDisplayAnimation` | Recorded |
 | `15 14` | 4-byte mask | live sensor readout (1 = orientation, 2 accel, 4 total accel, 8 location, 16 velocity, 32 speed, 64 gyro, 128 light) | `setLiveSensorData` | Recorded |
-| `15 11` | — | sent twice after a non-looping animation | — | Unknown |
-| `15 12` | 00 / 01 | sent at program end (00) / start (01) | — | Unknown |
+| `15 11` | — | Get Animation Complete Status (Edu asks after a non-looping animation) | — | Recorded |
+| `15 12` | 00 / 01 | Enable Animation Complete Asyncs (Edu: on at program start, off at end) | — | Recorded |
 
 Known ids for `15 10`: `0x0000000A` = default face (Edu restores this, looping), `0x00000002` = aim screen,
 `0x00000267` = "apple" image, `0x0000042D` = "applause" animation.
@@ -94,15 +95,16 @@ All Recorded. `registerMatrixAnimation` / `playMatrixAnimation` not captured yet
 | --- | --- | --- | --- | --- |
 | `16 07` | speed, heading(2), flags | roll at speed toward heading (0 = aim direction, clockwise) | `setHeading`, `setSpeed`, `stopRoll`, Drive mode | Recorded, Tested |
 | `16 06` | — | reset aim: current facing becomes heading 0 | `resetAim`, Aim "done" | Recorded, Tested |
-| `16 51` | 0/1 | **stabilization off/on** (BOLT used `16 0C`, absent here) | `setStabilization` | Recorded |
-| `16 4C` | heading(2), speed, seconds(float32) | timed roll; ball sends `16 4D` when done | `roll(h, s, t)` | Recorded |
-| `16 49` | heading(int16), speed, meters(float32) | roll a distance; ball sends `16 4E` when done | `rollToDistance` | Recorded |
-| `16 44` | — | status poll, replies `0F`; Edu polls it during timed/distance rolls | — | Unknown |
+| `16 51` | 0/1 | **Stop With Default Deceleration And Stabilization**: stops, then stabilization off/on. Edu's `setStabilization` (BOLT used `16 0C`, absent here) | `setStabilization` | Recorded, Tested |
+| `16 4C` | yaw(int16), speed, seconds(float32) | Drive Time At Yaw Normalized; ball sends `16 4D` (Reached End Drive For Time) | `roll(h, s, t)` | Recorded |
+| `16 49` | yaw(int16), speed, meters(float32) | Drive Distance At Yaw Normalized; ball sends `16 4E` (Reached End Drive To Distance) | `rollToDistance` | Recorded |
+| `16 44` | — | Get Active Control System Id. During timed/distance rolls it answers 15 = temporospatial_vector_drive; idle BP-7314 answered 17 (beyond Sphero's list) | — | Recorded, Tested |
 | `16 01` | modeL, powerL, modeR, powerR | raw motors (mode 1 forward, 2 reverse); Edu turns stabilization off first | `rawMotor` | Recorded |
-| `16 35` | turn(int8), speed(int8), flags | turn-rate + speed driving (spins in place fast) | — | Tested |
-| `16 32`–`16 37` | 8, 2, 9, 3, 8, 3 bytes | newer drive family (tank / RC / with-yaw, SI and normalized) | — | Probed |
+| `16 35` | turn(int8), speed(int8), flags | Drive Rc Normalized (spins in place fast) | — | Tested |
+| `16 33` | left(int8), right(int8) | Drive Tank Normalized | — | Probed |
+| `16 32`, `16 34`, `16 36`, `16 37` | 8, 9, 8, 3 bytes | not in Sphero Edu's table; never used by Edu | — | Probed |
 | `16 0F` | ? | ran when probed with zero bytes; the spherov2 library calls this "pitch torque modification" | — | Probed (avoid) |
-| `16 3F` (async) | — | sent after stabilization/controller changes | — | Recorded |
+| `16 3F` (async) | — | Robot Has Stopped Notify | — | Recorded |
 
 Speeds: Edu's speed 40 became `0x1A` in `16 4C`/`16 49` but `0x34` in `16 07` from `setSpeed`. Edu Drive mode at
 full speed sends `0xA6` (166). Treat the speed byte as raw 0–255 and scale in our own code.
@@ -138,10 +140,11 @@ Other sensor commands:
 | --- | --- | --- | --- |
 | `18 30` | — | ambient light, float32 lux | Tested (199 lux indoors) |
 | `18 13` | — | reset location to 0,0 | Recorded |
-| `18 47` | `00 01 00 FA` | configure collision detection (sent at connect) | Recorded |
+| `18 47` | `00 01 00 FA` | Configure Sensitivity Based Collision Detection: accelerometer method, sensitivity 1 = "very high" (0 super high … low), 250 ms dead time | Recorded |
 | `18 48` | 01 | enable collision notifications; ball sends `18 49` on a bump | Recorded |
 | `18 0F` | 01 | enable "gyro max" notifications | Recorded |
-| `18 5A` | `4B 82` | sent at connect, ball answers error `07` | Unknown |
+| `18 5A` | `4B 82` | Configure Collision Threshold (two bytes); Edu sends it at connect and this ball rejects it (error `07`) | Recorded |
+| `18 22` | — | Get Bot To Bot Infrared Readings; BP-7314 answered `04 04 04 04` (all four receivers seeing a signal) | Tested |
 | `18 25` | — | original BOLT "calibrate compass": **unknown command on BOLT+** | Tested |
 
 **No compass.** Edu's API marks `calibrateCompass`, `setCompassDirection`, `getCompassDirection` as BOLT only.
@@ -178,8 +181,8 @@ All Recorded with one ball (nothing to follow, so behavior not observed).
 | `11 13` | stats id | 2 bytes | Recorded |
 | `11 33` | manufacturing date | `07E9 03 15` = 2025-03-21 | Recorded |
 | `11 38` | SKU | ASCII | Recorded |
-| `11 47` | 6 bytes, looks like the Bluetooth address | — | Unknown |
-| `1D 15` | first command Edu sends; reply `01` | — | Unknown |
+| `11 47` | Get Uid (6-byte unique id) | — | Recorded |
+| `1D 15` | Get Current Application Id: `01` = main app (`00` would be bootloader) | — | Recorded |
 
 ## What Sphero Edu sends
 
@@ -225,7 +228,33 @@ right" and 150 "too slow". The BOLT+ page defaults to 200.
 
 High drive tilt with little movement means the drive is climbing the inside of the shell instead of rolling it.
 
+## Read-only queries answered by BP-7314
+
+Every no-argument "Get" command from Sphero's table (except factory-test and firmware-update devices), sent
+2026-10-09. Nothing moves. Highlights:
+
+| Query | Answer |
+| --- | --- |
+| Get Supported Dids (`10 05`) | `10 11 12 13 15 16 18 19 1A 1B 1D 1F 21 23` (`1B`, `21`, `23` are not in Sphero Edu's table) |
+| Get Api Protocol Version (`10 01`) | 2.1 |
+| Get Processor Name (`11 1F`) | "Nordic" (one processor) |
+| Get Main App / Bootloader Version (`11 00` / `11 01`) | 2.24.1610 / 2.3.418 |
+| Get Sku (`11 38`) | "0600" |
+| Get Boot Reason (`11 20`) | 0 |
+| Get Core Up Time (`11 39`) | about 52 minutes |
+| Get Battery Voltage State Thresholds (`13 26`) | 3.55 V, 3.65 V, 0.005 (float32) |
+| Get Battery Adc Reading (`13 22`) | 2556 |
+| Get Display Mode (`15 01`) | 2 = color (0 idle, 1 text, 2 color, 3 matrix, 4 animation, 5 sensor) |
+| Get Display Protection Status (`15 0C`) | 0 = ok |
+| Get Bluetooth Advertising Name (`19 05`) | "BP-7314" |
+
+Answered "not supported" (error `02`): Get Mac Address, Get Model Number, Get Last Error Info, Get Three Character
+Sku, Get Sos Message, Get Battery Voltage, Get Battery State, Get Motor Fault State, Get Drive Target Slew
+Parameters, Get Rgbc Sensor Values, Get Current Detected Color Reading, Get Motor Thermal Protection Status,
+Get Active Color Palette.
+
 ## Still to capture
 
-`registerMatrixAnimation` / `playMatrixAnimation`, `listenForIRMessage` receiving a message (needs two balls),
-`registerSoftwareButton` payloads, `speak` (runs on the device, likely no Bluetooth), and the unknowns above.
+`registerMatrixAnimation` / `playMatrixAnimation` (likely the compressed-frame-player save commands `1A 30`, `1A 31`, `1A 40`, `1A 41` and play commands `1A 32`, `1A 43`),
+`listenForIRMessage` receiving a message (needs two balls), `registerSoftwareButton` payloads, `speak` (runs on the
+device, likely no Bluetooth). Device groups `1B`, `21`, `23` are supported by the ball but absent from Sphero's table.
