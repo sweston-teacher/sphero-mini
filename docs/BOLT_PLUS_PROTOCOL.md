@@ -294,6 +294,45 @@ Sku, Get Sos Message, Get Battery Voltage, Get Battery State, Get Motor Fault St
 Parameters, Get Rgbc Sensor Values, Get Current Detected Color Reading, Get Motor Thermal Protection Status,
 Get Active Color Palette.
 
+## Hidden command groups and the debug console (BP-7314, 2026-10-09)
+
+`10 06` (Get Supported Cids, payload = device id) lists what each device group supports. Read-only.
+
+| Group | Supported command ids | In Sphero Edu's table? |
+| --- | --- | --- |
+| `1B` | `1C 1E 20` | no |
+| `21` | `19 1A 1B 1D 1E 20 21 22 23 24 25 26 27` | no |
+| `23` | `00 03 04 05 07 08 09 0B 0C 0D` | no |
+| `16` (drive) | `01 06 07 0B 0E 0F 20 21 22 32 33 34 35 36 37 41 42 43 44 45 46 49 4A 4B 4C 4F 50 51` | mostly |
+| `15` (screen) | `01 02 03 05 06 07 08 09 0A 0B 0C 0E 10 11 12 14 15` | yes |
+
+None of the hidden commands has been run. Their purpose is unknown.
+
+**Debug console** on characteristic `00010003-…`: plain text lines ending in newline, answers end with `>>>`.
+`list` prints its 167 commands (`list <word>` filters). `help` prints a Colossal Cave Adventure joke.
+Read-only commands we ran and their answers:
+
+| Command | Answer |
+| --- | --- |
+| `ver` | board rev 2, bootloader 2.3.418, main app 2.24.1610, bios 1.0.58, net core 2.1.103 |
+| `build` | repo boltplus-nrf53-mainapp, branch develop, CI build 2025-01-15 |
+| `info` | processor Nordic, stats id 27, SKU 0600, manufactured 2025-03-21 |
+| `battery` | volts (3.71), percent (27), ADC, state. The normal `13 03` voltage command is unsupported, but this works. |
+| `temp` | two temperatures, about 40 °C after a day of testing |
+| `charger` | NOT_CHARGING |
+| `bmivariant` / `alsvariant` / `alslux` | Bosch BMI055 motion sensor, Vishay VEML6030 light sensor, lux |
+| `displaymode`, `rotation`, `livesensormask`, `matrixcolors`, `getmonitorstatus` | screen state; matrix colors are 16-bit (RGB565) |
+| `protectedregions` | internal flash: bootloader `0x00000000–0x0002FFFF`, main app `0x00030000–0x000FBFFF` |
+| `cbinfo`, `loginfo`, `systime`, `playmode`, `mode`, `swdstatus`, `netver`, `bootreason` | config block, event log usage, timing stats, play mode 1, user mode, debug port locked, cold boot |
+
+Console commands **not** to run casually: `hardfault`, `while1`, `stackof` (deliberate crashes), `logerase`,
+`factory`, `rst`, `zz`/`zq` (sleep), `battcal`, `enccal`/`clearenccal` (calibration), `shakeconfig*`, `motor`,
+`roll`/`rl`/`tank`/`rc` and other drive commands (they move the ball), `displaytests`/`fonttests` (screen test patterns).
+
+The console's screen commands are mode, color, text, animation id, live sensor, rotation, clear, and 8×8 matrix
+drawing. **No picture upload exists in the console**, and the internal flash map has no room for the built-in
+picture library, so it is stored elsewhere (likely an external flash chip) and loaded by a channel we have not found.
+
 ## Still to capture
 
 `listenForIRMessage` receiving a message (needs two balls), `registerSoftwareButton` payloads, `speak` (runs on the
