@@ -471,9 +471,34 @@
   // ---------------------------------------------------------------- drive loop
   let aimTarget = null, aimHeading = 0, aimSent = null;
 
+  // ---------------------------------------------------------------- smooth driving (BOLT+ only)
+  // Measured on carpet: jumping straight to a high speed makes the BOLT+'s drive slip inside the shell, sharp
+  // direction changes at speed become wide slides, and it coasts when keys are released. Smooth driving ramps the
+  // speed up, eases off during sharp turns, and brakes with a short reverse push. Off unless the page turns it on.
+  let smoothDrive = !!PAGE.smoothDrive;
+  const smoothToggle = $('#smoothToggle');
+  window.__setSmoothDrive = (on) => { smoothDrive = !!on; if (smoothToggle) smoothToggle.checked = smoothDrive; return smoothDrive; };
+  if (smoothToggle) {
+    smoothToggle.checked = smoothDrive;
+    smoothToggle.addEventListener('change', () => { smoothDrive = smoothToggle.checked; toast(smoothDrive ? 'Smooth driving on' : 'Smooth driving off', 'ok'); });
+  }
+  const SMOOTH = { rampPerTick: 25, sharpTurnDeg: 50, turnSpeed: 60, brakeMinSpeed: 100, brakeFactor: 0.5, brakeMs: 150 };
+  const usesSmooth = (entry) => smoothDrive && entry.robot.model === 'boltplus';
+  const angleBetween = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+
   function stopRobot(entry) {
+    const wasMovingFast = entry.moving && (entry.sentSpeed || 0) >= SMOOTH.brakeMinSpeed;
     entry.moving = false;
-    if (entry.status === 'ok') entry.robot.drive(0, entry.heading).catch(() => {});
+    if (entry.status !== 'ok') return;
+    if (usesSmooth(entry) && wasMovingFast) {
+      // Brake: a brief push backward (without turning around), then stop.
+      entry.robot.drive(Math.round(entry.sentSpeed * SMOOTH.brakeFactor), entry.heading, true).catch(() => {});
+      clearTimeout(entry.brakeTimer);
+      entry.brakeTimer = setTimeout(() => { entry.brakeTimer = null; entry.robot.drive(0, entry.heading).catch(() => {}); }, SMOOTH.brakeMs);
+    } else {
+      entry.robot.drive(0, entry.heading).catch(() => {});
+    }
+    entry.sentSpeed = 0;
   }
   function stopAll() { robots.forEach(stopRobot); }
 
@@ -504,8 +529,18 @@
 
       if (v) {
         const mag = Math.min(1, Math.hypot(v.x, v.y));
+        const previousHeading = entry.heading;
         entry.heading = (Math.round(Math.atan2(v.x, v.y) * 180 / Math.PI) + 360) % 360;
-        const speed = v.turbo ? 255 : Math.round(mag * maxSpeed);
+        const target = v.turbo ? 255 : Math.round(mag * maxSpeed);
+        let speed = target;
+        if (usesSmooth(entry)) {
+          if (entry.brakeTimer) { clearTimeout(entry.brakeTimer); entry.brakeTimer = null; }
+          const s = entry.sentSpeed || 0;
+          const sharpTurn = entry.moving && s > SMOOTH.turnSpeed && angleBetween(entry.heading, previousHeading) > SMOOTH.sharpTurnDeg;
+          if (sharpTurn) speed = Math.min(target, SMOOTH.turnSpeed);          // ease off while it swings around
+          else speed = target > s ? Math.min(target, s + SMOOTH.rampPerTick) : target; // ramp up, never above target
+        }
+        entry.sentSpeed = speed;
         entry.robot.drive(speed, entry.heading).catch(() => {});
         entry.moving = true;
       } else if (entry.moving) {

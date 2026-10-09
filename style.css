@@ -166,3 +166,6 @@ kbd { display: inline-block; min-width: 34px; text-align: center; padding: 3px 9
 .toast.bad { border-left-color: var(--red); background: #3a1e21; }
 .toast.ok  { border-left-color: var(--green); background: #16311f; }
 @keyframes rise { from { transform: translateY(10px); opacity: 0; } }
+
+.toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text); }
+.toggle input { width: 20px; height: 20px; accent-color: var(--accent); }

@@ -55,6 +55,8 @@ Mini page, with the same Aim button. Each BOLT+ shows its color on all six light
 
 - Wake a BOLT+ by lifting it off its charger. Its screen shows a code; pick the same code in the Bluetooth list.
 - The BOLT+ has no compass, so "forward" is set with Aim, for example toward a sign on the east wall.
+- **Smooth driving** (switch under More controls, off by default, being tested): speeds up gradually so the ball
+  doesn't slip, slows down for sharp turns, and brakes with a short backward push when the keys are released.
 - If a BOLT+ was last used in Sphero Edu, it may sit limp (Edu turns stabilization off when a program ends).
   Connecting here turns it back on.
 
