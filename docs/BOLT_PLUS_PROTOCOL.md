@@ -306,8 +306,14 @@ Get Active Color Palette.
 | `16` (drive) | `01 06 07 0B 0E 0F 20 21 22 32 33 34 35 36 37 41 42 43 44 45 46 49 4A 4B 4C 4F 50 51` | mostly |
 | `15` (screen) | `01 02 03 05 06 07 08 09 0A 0B 0C 0E 10 11 12 14 15` | yes |
 
-**Run with no payload on a spare ball (BP-8145, 2026-10-09), health checked after each one; the ball was unharmed**
-(ping, battery and screen mode normal throughout; built-in default face still plays afterwards):
+**Warning: do not send group `23` commands to a ball you need.** After the probe below, BP-8145 later disconnected and
+came back running its **bootloader** (`1D 15` Get Current Application Id answered `00`, wake answered "not supported",
+uptime 36 s). The most likely cause is one of the no-payload `23` commands that "ran" (`00`, `07`, `0B`, `0D`)
+arming an update-mode boot. Recovery attempt: connect it with Sphero Edu, which checks firmware on every connection
+and can reinstall 2.24.1610.
+
+**Run with no payload on a spare ball (BP-8145, 2026-10-09), health checked after each one.** Health looked normal
+right afterwards (ping, battery, screen mode, built-in face), but see the warning above:
 
 | Group | Result |
 | --- | --- |
