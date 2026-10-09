@@ -87,7 +87,38 @@ Known ids for `15 10`: `0x0000000A` = default face (Edu restores this, looping),
 | `1A 39` | fps transition | `overrideMatrixAnimationFramerate` (`00 00` = reset) |
 | `1A 36` / `1A 37` | — | `pauseMatrixAnimation` / `resumeMatrixAnimation` |
 
-All Recorded. `registerMatrixAnimation` / `playMatrixAnimation` not captured yet.
+All Recorded.
+
+## Custom pictures and animations on the BOLT+ screen (Tested with the teacher watching, BP-7314, 2026-10-09)
+
+The BOLT+ screen is 128×128, but **custom drawings are 8×8**: each "matrix" pixel shows as a big square. This mode
+imitates the original BOLT's LED grid. Full-resolution graphics are limited to the built-in images and animations
+stored on the ball (picked by id with `15 10`), text (`15 03`), a solid color (`15 02`) and live sensor data
+(`15 14`). No command for uploading a custom full-resolution picture was found.
+
+**Screen mode matters.** `15 01` (Get Display Mode) answers 0 idle, 1 text, 2 color, 3 matrix, 4 animation, 5 sensor.
+Matrix drawing only shows in matrix mode. `15 02` puts the screen in color mode, `15 07` (clear) makes it idle, and
+`1A 2E` alone does not change the mode. **Drawing one pixel with `1A 2D` switches to matrix mode**, so send that
+first (Sphero Edu does it implicitly at program start with `1A 2F 00 00 00`).
+
+| Command | Payload | Result |
+| --- | --- | --- |
+| `1A 2E` Set Compressed Frame Player | 64 × (r g b) = 192 bytes, row by row starting at pixel (row 0, col 0) | whole 8×8 picture at once. Pixel 0 is a corner of the screen. |
+| `1A 35` Delete All Animations And Frames | — | clears saved frames |
+| `1A 30` Save 64 Bit Frame | frame index (uint16), then 4 bit-planes × 8 bytes | stores one frame of palette indices (0–15) |
+| `1A 31` Save Animation | index, fps, fade (0/1), palette count, palette (r g b each), frame count (uint16), frame indices (uint16 each) | defines an animation |
+| `1A 43` Play Animation With Loop Option | index, loop (0/1) | plays it; the ball sends `1A 3F` when stopped |
+| `1A 38` Reset Animation | — | stops it |
+
+Frame packing for `1A 30` (from Sphero Edu's code, confirmed on the ball): visit pixels **column by column (col 0→7),
+and within each column from row 7 up to row 0**; the n-th pixel visited is bit n. Each palette index contributes one
+bit to each of four 64-bit planes, **bit 0 plane first**. Each plane is sent big-endian with the upper 32 bits first.
+With this packing, an animation frame and the same picture drawn with `1A 2E` look identical.
+
+Packing frames as one 4-bit index per pixel instead gives a blank screen with a couple of blinking red dots.
+
+Sphero Edu itself saves animations with `1A 40` (assign frames) and `1A 41` (save without frames), but its code
+skips a zero animation index or a false fade flag, so we use `1A 31` with every field present.
 
 ## Driving (DID `16`)
 
@@ -255,6 +286,5 @@ Get Active Color Palette.
 
 ## Still to capture
 
-`registerMatrixAnimation` / `playMatrixAnimation` (likely the compressed-frame-player save commands `1A 30`, `1A 31`, `1A 40`, `1A 41` and play commands `1A 32`, `1A 43`),
 `listenForIRMessage` receiving a message (needs two balls), `registerSoftwareButton` payloads, `speak` (runs on the
 device, likely no Bluetooth). Device groups `1B`, `21`, `23` are supported by the ball but absent from Sphero's table.
