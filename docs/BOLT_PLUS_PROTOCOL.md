@@ -309,8 +309,10 @@ Get Active Color Palette.
 **Warning: do not send group `23` commands to a ball you need.** After the probe below, BP-8145 later disconnected and
 came back running its **bootloader** (`1D 15` Get Current Application Id answered `00`, wake answered "not supported",
 uptime 36 s). The most likely cause is one of the no-payload `23` commands that "ran" (`00`, `07`, `0B`, `0D`)
-arming an update-mode boot. Recovery attempt: connect it with Sphero Edu, which checks firmware on every connection
-and can reinstall 2.24.1610.
+arming an update-mode boot. **It recovered by itself:** after a trip to the charger it connected and drove normally
+on our site (which cannot connect to a ball in bootloader mode, because wake fails there), with no firmware
+reinstall. If a ball ever stays in bootloader mode, connecting it with Sphero Edu, which checks firmware on every
+connection, should reinstall 2.24.1610.
 
 **Run with no payload on a spare ball (BP-8145, 2026-10-09), health checked after each one.** Health looked normal
 right afterwards (ping, battery, screen mode, built-in face), but see the warning above:
