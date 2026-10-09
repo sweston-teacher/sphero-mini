@@ -315,6 +315,13 @@ Get Active Color Palette.
 | `21` (13 commands) | all answer `04` "wrong mode": locked the same way |
 | `23` | looks like **firmware update (OTA)**: `03` → `00 02 00 18 06 4A` (2.24.1610); `0C` → `01 01` + version (image slot info); `04` → `01 E6` (486, plausibly max chunk size); `07`, `0B` → `01`; `0D` → `00`; `00` → empty OK; `08`, `09` need data (`05` bad length, nothing done); `05` → `06` "failed" (consistent with "apply update" when nothing is staged) |
 
+The firmware package Sphero Edu ships (`boltplus-2.24.1610.zip`) matches group `23`: its 44-byte manifest header holds
+the version (2.24.1610), a chunk size of 486 (`0x01E6`, the same number `23 04` returns), 1024 chunks, the image size
+(497,400 bytes) and a 20-byte digest. **The firmware image itself is encrypted** (no ARM vector table, no readable
+text, high-entropy from byte 0), and the console reports the debug port (`swdstatus`) as locked. Writing custom
+firmware would need Sphero's keys, or opening the ball and erasing the chip through its debug pads, which removes
+Sphero's bootloader and firmware entirely.
+
 Groups `1B` and `21` probably hold factory tools; if a picture-upload channel exists, it is most likely behind that
 mode lock. Unlocking it would mean switching the ball out of user mode (console `factory`, or the `12` system-mode
 commands), which we have not tried.
