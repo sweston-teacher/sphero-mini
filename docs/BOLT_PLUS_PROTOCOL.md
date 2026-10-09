@@ -8,7 +8,8 @@ Nothing here comes from official Sphero protocol documentation (none is publishe
 - **Probed**: we only know the command exists or how long its payload is.
 - **Unknown**: seen, meaning not established. Do not guess.
 
-Sources: balls BP-6226 and BP-7314 (manufacture date 2025-03-21, firmware 2.24.1610), Chrome on macOS, 2026-10-09.
+Sources: balls BP-6226 and BP-7314 (manufacture date 2025-03-21, firmware 2.24.1610, which is the current BOLT+
+firmware in Sphero Edu as of 2026-10-09), Chrome on macOS, 2026-10-09.
 Function names and "compatible robots" come from Sphero Edu's API definitions file
 (`core/canvas-api-definitions.ts`, loaded by the Edu code editor). **Command names** come from the command table in
 Sphero Edu's `/code/sdk/toybox.js`; the full table is in `docs/SPHERO_COMMAND_TABLE.md`.
@@ -70,7 +71,16 @@ Our early guess "0x07 = front" was wrong: bits 0–2 are one of the left LEDs.
 | `15 12` | 00 / 01 | Enable Animation Complete Asyncs (Edu: on at program start, off at end) | — | Recorded |
 
 Known ids for `15 10`: `0x0000000A` = default face (Edu restores this, looping), `0x00000002` = aim screen,
-`0x00000267` = "apple" image, `0x0000042D` = "applause" animation.
+`0x00000267` = "apple" image, `0x0000042D` = "applause" animation. Also seen from Sphero Edu's picture picker:
+`0x00000008` (play once), `0x00000425` and `0x00000429` (looping). Drive mode first fills the screen light blue
+(`15 02 83 AE E6`).
+
+**Changing the picture in Sphero Edu only selects a built-in id.** Recorded 2026-10-09 while the teacher changed
+pictures in Edu: every change was a `15 10` with an id, and the largest message in the session was 22 bytes. No
+command in Edu's table uploads picture data. The firmware package (`boltplus-2.24.1610.zip`, one 497 KB program
+file) is too small to contain the 650+ built-in pictures, so they are stored separately on the ball. If an upload
+channel exists, it is not used by Sphero Edu; the ball's undocumented device groups `1B`, `21`, `23` are candidates
+but have not been probed (risk of affecting stored pictures).
 
 ## Matrix-style drawing (DID `1A`), drawn on the BOLT+ screen
 
