@@ -346,6 +346,26 @@ chunk size, 1024 chunks, the image size (497,400 bytes) and a 20-byte digest. Th
 erasing the chip. The 497 KB image is far too small for the 650+ built-in pictures, so those live in separate storage.
 If a picture-upload channel exists, it is most likely in the mode-locked groups `1B` or `21`.
 
+### Names from public community code (not confirmed on the BOLT+)
+
+Read from open-source projects, not tested by us:
+
+- **`1B` is called "storage_command"** in the pysphero library's device list (an older-robot era name; no commands
+  listed). That fits the idea that the locked group handles stored data.
+- **`16 0F`** is `set_pitch_torque_modification_value` (one float) in spherov2.py; `16 0E` set control system type;
+  `16 20` / `16 21` set / get component parameters (component, group, then float32 values), with no names for the
+  components.
+- Sphero's RVR SDK gives payloads for drive commands the BOLT+ also lists: `16 32` tank SI (two floats),
+  `16 34` RC SI (turn rate float, speed float, flags), `16 36` drive with yaw SI (yaw float, speed float),
+  `16 37` drive with yaw normalized (int16 yaw, int8 speed).
+- `12` (system mode) command names in pysphero are mostly for Star Wars droids; sphero_unsw adds `12 29` enable desktop
+  mode, `12 2B` get out-of-box state, `12 2C` enable out-of-box state.
+- One hobby project lists "display image" `1A 24` and "display animation" `1A 27` for the BOLT+, but its example
+  checksums are wrong and no library has them: treat as unreliable. Our recordings show pictures use `15 10`.
+- Other BOLT+ projects: [sphero-pi](https://github.com/GamesByMoonlight/sphero-pi) (raw BOLT+ Bluetooth from a
+  Raspberry Pi; its supported-group list matches ours), [sphero_unsw](https://github.com/redaghanem/sphero_unsw)
+  (spherov2 fork with BOLT+ support; its README says matrix image display does not work).
+
 ## Warnings
 
 - **Never send group `23` commands to a ball you need.** After the probe above, BP-8145 later restarted into its
