@@ -202,12 +202,28 @@ LEDs off, `16 06` reset aim, clear screen, default face, LEDs white.
 **Events** (`registerEvent`): send nothing. Edu detects collisions, freefall, landing, charging, etc. from the
 stream and from the notifications it enabled at connect.
 
-## Turning observations (not yet conclusive)
+## Turning observations
 
 - Standing still, `16 07` turns the ball to the new heading in under 0.5 s (yaw from the stream, both balls).
 - While rolling at raw speed 60, the inner drive also swung 90° in about 0.2 s, but the ball then barely moved
   while the drive tilted 35–70°. This looked like the ball pushing against an obstacle; the test ran unattended.
   Repeat with someone watching before changing how our site turns.
+
+## Traction and speed on carpet (BP-7314, 2026-10-09, measured from the sensor stream)
+
+One-second drives at raw speed 70, same sequence twice:
+
+| Drive | No covering | Covering on |
+| --- | --- | --- |
+| forward / backward / right / left / diagonal | 7 / 13 / 3 / 21 / 15 cm | 25 / 13 / 9 / 18 / 19 cm |
+| total | 59 cm | 84 cm |
+
+With covering on: speed 200 forward went 115 cm in 1.1 s (peak 123 cm/s, drive tilt 77°); speed 255 went only
+46 cm (peak 70 cm/s, tilt 80°, includes turning around first). Turning 90° while rolling at 200: the path turned
+70° after 0.63 s, drive tilt reached 110°, and it looked like a wide curve. The teacher rated 200 and 255 "about
+right" and 150 "too slow". The BOLT+ page defaults to 200.
+
+High drive tilt with little movement means the drive is climbing the inside of the shell instead of rolling it.
 
 ## Still to capture
 

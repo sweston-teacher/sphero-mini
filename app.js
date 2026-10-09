@@ -11,7 +11,7 @@
 
   // Shown next to the title so the teacher can tell at a glance whether a student has reloaded.
   // Bump on every deploy: +0.01 for small fixes, a bigger step for new features.
-  const VERSION = '1.08';
+  const VERSION = '1.09';
   if ($('#version')) $('#version').textContent = 'v' + VERSION;
   console.info('Sphero Drive v' + VERSION);
 
@@ -40,7 +40,8 @@
   const robots = [];
   window.__spheros = robots; // debugging handle
   let active = null;        // the selected card: joystick, color, aim and the B key apply to it
-  let maxSpeed = 120;
+  // Each page sets its own default on the slider. BOLT+: 200, measured best on carpet (docs/BOLT_PLUS_PROTOCOL.md).
+  let maxSpeed = +((document.querySelector('#speed') || {}).value || 120);
 
   // ---------------------------------------------------------------- helpers
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
